@@ -6,6 +6,7 @@
 ## Category: Auctions
 ## X-Category: Auction/Economy
 ## X-License: MIT
+## X-Website: https://github.com/Madsebase/ForeverGearScanner
 ## IconTexture: Interface\AddOns\ForeverGearScanner\Textures\Logo
 ## OptionalDependencies: Pawn
 ## SavedVariables: ForeverGearScannerDB
