@@ -4,18 +4,18 @@
 
 # Forever Gear Scanner
 
-The default Auction House in **World of Warcraft: Forever** only lets you browse by item name and price. If you want an upgrade with Spell Power, MP5, Hit, or a specific weapon speed, you end up hovering over dozens of listings one tooltip at a time.
+The default Auction House in **World of Warcraft: Forever** (`Interface: 16001`) only lets you browse by item name and price. If you want an upgrade with Spell Power, MP5, Hit, or a specific weapon speed, you end up hovering over dozens of listings one tooltip at a time.
 
 **Forever Gear Scanner** adds a **Gear Scanner** tab to the Auction House and replaces tooltip hunting with scannable gear cards. Filter across 40 stats with min and max values, cap your Gold / Silver / Copper budget before scanning, spot unusable items at a glance, and see **Pawn** upgrade percentages right on the results.
 
 ## What You Get
 
-- **Scannable gear cards instead of tooltip hunting:** Every card shows item level, required level, weapon or armor type, slot, damage/DPS/speed, full stats, and available listing count. Only weapons and armor are scanned, so consumables, trade goods, and bags never clutter your search.
+- **Scannable gear cards instead of tooltip hunting:** Every card shows item level, required level, weapon or armor type, slot, damage/DPS/speed, full stats, and available listing count. Browse queries target equipable **Weapon** and **Armor** items directly on `C_AuctionHouse`, so consumables, trade goods, and bags never clutter your search.
 - **Filter across 40 stats with min/max values:** Search for Spell Power, Healing, school spell damage (Fire, Frost, Shadow, Nature, Arcane, Holy), Crit, Hit, Haste, MP5, Expertise, Defense, Block Value, and primary stats. Click an empty stat box to browse the full dropdown or type to narrow it down.
 - **Click any pill to sort or filter:** Every stat and weapon value (`Min Dmg`, `Max Dmg`, `DPS`, `Speed`, plus equip stats) appears as a clickable pill. Left-click a pill to sort results by that stat, or right-click it to add it to your Stat Filters.
 - **Held in Off-Hand and weapon filters that make sense:** Standard AH categories bury off-hand items under Miscellaneous armor. Forever Gear Scanner gives you direct **Held in Off-Hand** slot filtering plus min/max ranges for **Damage**, **DPS**, and **Speed**.
 - **Exact Gold / Silver / Copper price cap:** Set your max budget in coin boxes before scanning, and narrow results further by **Req Level**, **Rarity**, **Category**, **Subtype**, and **Slot**.
-- **Unusable gear warnings:** If **Usable Only** is unchecked, items your character cannot equip tint red on the icon and highlight the missing skill, level, or class requirement directly on the card.
+- **Unusable gear warnings:** If **Usable Only** is unchecked, items your character cannot equip tint red on the icon and highlight the missing proficiency, level, or class requirement directly on the card.
 - **Safe 2-step buyout:** Clicking **Buyout** checks the cheapest live listing and switches the button to **Confirm Buy**. Nothing is bought until your second click.
 
 ## Screenshots
@@ -45,6 +45,13 @@ Full credit to **Vger** for Pawn. Forever Gear Scanner reads your Pawn scales di
 3. Click **+ Add Stat Filter** to pick stats and optional Min/Max thresholds.
 4. Click **Search AH**.
 5. Click **Buyout** on a card to check the live listing, then click **Confirm Buy** to purchase.
+
+## Technical Notes
+
+- **Target client:** World of Warcraft: Forever (`Interface: 16001`).
+- **AH scanning & throttling:** Queries `C_AuctionHouse` item browse/search endpoints and gates queued requests against `IsThrottledMessageSystemReady()` so large scans stay throttle-safe.
+- **Tooltip & stat parsing:** Combines base item stats with Classic/Forever `Equip:` tooltip parsing (including split healing + spell damage wording and weapon min/max damage, DPS, and speed).
+- **Hardware-event buyout flow:** Clicking **Buyout** fetches live auction IDs asynchronously, then enables **Confirm Buy** so `PlaceBid` executes directly inside your second click (`#hwevent`).
 
 ## License
 
