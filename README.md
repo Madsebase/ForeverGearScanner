@@ -9,8 +9,8 @@ A stat-based Auction House gear browser for **World of Warcraft: Forever** (`Int
 ## Key Features
 
 - **Equipment-only scanning:** Browse queries target equipable **Weapon** and **Armor** items directly on Blizzard's `C_AuctionHouse` API - no consumables, trade goods, or bags in your results.
-- **Granular slot & weapon/armor filters:** Narrow by Rarity, Weapon/Armor category, Subtype, Slot (including direct **Held in Off-Hand** filtering), Weapon Damage / DPS, Armor, and Required Level.
-- **Multi-stat filtering with min/max values:** Filter by `Spell Power`, `Healing`, school damage (`Fire`, `Frost`, `Shadow`, `Nature`, `Arcane`, `Holy`), `MP5`, `Crit`, `Hit`, `Haste`, `Expertise`, `Defense`, `Block Value`, and more. Click an empty stat box to browse all 36 supported stats or type to filter live.
+- **Granular slot & weapon/armor filters:** Narrow by Rarity, Weapon/Armor category, Subtype, Slot (including direct **Held in Off-Hand** filtering), Weapon Damage / DPS / Speed, Armor, and Required Level.
+- **Multi-stat filtering with min/max values:** Filter by `Spell Power`, `Healing`, school damage (`Fire`, `Frost`, `Shadow`, `Nature`, `Arcane`, `Holy`), `Min Damage`, `Max Damage`, `DPS`, `Speed`, `MP5`, `Crit`, `Hit`, `Haste`, `Expertise`, `Defense`, `Block Value`, and more. Click an empty stat box to browse all 40 supported stats, left-click any card pill to sort, or right-click a pill to add it as a filter.
 - **Built for WoW: Forever stat wording:** Accurately parses raw base stats alongside Classic/Forever `Equip:` text (including split healing + spell damage gear).
 - **Native Gold / Silver / Copper max price:** Set your exact budget ceiling cleanly with separate numeric G/S/C boxes.
 - **Instant unusable gear warnings:** Items you cannot equip tint soft red on the icon and highlight the failing requirement (proficiency, level, or class lock) on the card.

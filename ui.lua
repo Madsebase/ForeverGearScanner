@@ -97,6 +97,7 @@ local PREDEFINED_STATS = {
     "Spell Power", "Healing",
     "Fire Spell Damage", "Frost Spell Damage", "Shadow Spell Damage",
     "Nature Spell Damage", "Arcane Spell Damage", "Holy Spell Damage",
+    "Min Damage", "Max Damage", "DPS", "Speed",
     "Strength", "Agility", "Stamina", "Intellect", "Spirit",
     "Attack Power", "Ranged Attack Power", "Feral Attack Power",
     "Crit", "Spell Crit", "Hit", "Spell Hit", "Haste", "Spell Haste",
@@ -196,7 +197,7 @@ local currentInvTypeFilter = ""
 local currentPawnScale = nil
 
 local ddQuality, ddCategory, ddSubtype, ddSlot, ddPawnSpec
-local editWeaponMin, editWeaponMax, editDpsMin, editDpsMax
+local editWeaponMin, editWeaponMax, editDpsMin, editDpsMax, editSpeedMin, editSpeedMax
 local editArmorMin, editArmorMax
 local editReqLevelMin, editReqLevelMax
 local checkUsableOnly, checkPawnUpgrades, editBuyoutGold, editBuyoutSilver, editBuyoutCopper
@@ -634,7 +635,7 @@ local function CreateTypeFilters(parent)
 end
 
 local function CreateWeaponFilters(parent)
-    local c, sec = CreateCollapsibleSection(parent, "Weapon Filters", 60)
+    local c, sec = CreateCollapsibleSection(parent, "Weapon Filters", 88)
     sec.id = "WEAPON"
     CreateLabel(c, "Damage:", 5, -5)
     editWeaponMin = CreateCleanEditBox(c, 40, 20); editWeaponMin:GetParent():SetPoint("TOPLEFT", 65, -2)
@@ -645,6 +646,11 @@ local function CreateWeaponFilters(parent)
     editDpsMin = CreateCleanEditBox(c, 40, 20); editDpsMin:GetParent():SetPoint("TOPLEFT", 65, -32)
     CreateLabel(c, "–", 110, -35)
     editDpsMax = CreateCleanEditBox(c, 40, 20); editDpsMax:GetParent():SetPoint("TOPLEFT", 120, -32)
+
+    CreateLabel(c, "Speed:", 5, -65)
+    editSpeedMin = CreateCleanEditBox(c, 40, 20); editSpeedMin:GetParent():SetPoint("TOPLEFT", 65, -62)
+    CreateLabel(c, "–", 110, -65)
+    editSpeedMax = CreateCleanEditBox(c, 40, 20); editSpeedMax:GetParent():SetPoint("TOPLEFT", 120, -62)
 end
 
 local function CreateArmorFilters(parent)
@@ -805,6 +811,22 @@ local function AddStatFilterRow(statText, minVal, maxVal)
 
     table.insert(statFilterRows, row)
     LayoutStatFilters()
+    return row
+end
+
+local function FocusOrAddStatFilter(statLabel)
+    local lowerTarget = string.lower(statLabel or "")
+    for _, row in ipairs(statFilterRows) do
+        local cur = row.editStat:GetText()
+        if cur == "" or string.lower(cur) == lowerTarget then
+            if cur == "" then row.editStat:SetText(statLabel) end
+            row.editMin:SetFocus()
+            return row
+        end
+    end
+    local newRow = AddStatFilterRow(statLabel)
+    if newRow and newRow.editMin then newRow.editMin:SetFocus() end
+    return newRow
 end
 
 local function CreateStatFilters(parent)
@@ -833,6 +855,7 @@ local function ClearFilters()
 
     editWeaponMin:SetText(""); editWeaponMax:SetText("")
     editDpsMin:SetText(""); editDpsMax:SetText("")
+    editSpeedMin:SetText(""); editSpeedMax:SetText("")
     editArmorMin:SetText(""); editArmorMax:SetText("")
 
     editReqLevelMin:SetText(""); editReqLevelMax:SetText("")
@@ -876,6 +899,7 @@ local function SyncFiltersFromUI()
 
     fl.minDamage = getVal(editWeaponMin); fl.maxDamage = getVal(editWeaponMax)
     fl.minDPS = getVal(editDpsMin); fl.maxDPS = getVal(editDpsMax)
+    fl.minSpeed = getVal(editSpeedMin); fl.maxSpeed = getVal(editSpeedMax)
 
     fl.minArmor = getVal(editArmorMin); fl.maxArmor = getVal(editArmorMax)
 
@@ -1002,6 +1026,7 @@ local function GetOrCreatePill(container, index)
     if container.pills[index] then return container.pills[index] end
 
     local btn = CreateFrame("Button", nil, container, BACKDROP_TEMPLATE)
+    if btn.RegisterForClicks then btn:RegisterForClicks("LeftButtonUp", "RightButtonUp") end
     ApplyBackdrop(btn, EDITBOX_BACKDROP, 0.12, 0.12, 0.12, 1, 0.35, 0.35, 0.35, 1)
 
     local text = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1010,6 +1035,63 @@ local function GetOrCreatePill(container, index)
 
     container.pills[index] = btn
     return btn
+end
+
+local function AddCardPill(container, state, label, sortKey, filterLabel, tr, tg, tb)
+    local pill = GetOrCreatePill(container, state.pIdx)
+    pill:Show()
+    pill.text:SetText(label)
+    pill.text:SetTextColor(tr or 1, tg or 1, tb or 1)
+    local pw = math.min(pill.text:GetStringWidth() + 10, state.maxW)
+    pill:SetSize(pw, 16)
+
+    if pill.SetBackdropBorderColor then
+        if sortKey and AGS.SortKey == sortKey then
+            pill:SetBackdropBorderColor(0.8, 0.8, 0.2, 1)
+        else
+            pill:SetBackdropBorderColor(0.35, 0.35, 0.35, 1)
+        end
+    end
+
+    if sortKey then
+        pill:SetScript("OnClick", function(_, button)
+            if button == "RightButton" and filterLabel then
+                FocusOrAddStatFilter(filterLabel)
+            elseif AGS.SetSort then
+                AGS:SetSort(sortKey)
+            end
+        end)
+        pill:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(filterLabel or sortKey, 1, 0.82, 0)
+            GameTooltip:AddLine("Left-click: Sort by " .. (filterLabel or sortKey), 0.8, 0.8, 0.8)
+            if filterLabel then
+                GameTooltip:AddLine("Right-click: Add filter for " .. filterLabel, 0.6, 1, 0.6)
+            end
+            GameTooltip:Show()
+        end)
+        pill:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    else
+        pill:SetScript("OnClick", nil)
+        pill:SetScript("OnEnter", nil)
+        pill:SetScript("OnLeave", nil)
+    end
+
+    if not sortKey then
+        if state.x > 0 then state.x = 0; state.y = state.y - 18 end
+        pill:ClearAllPoints()
+        pill:SetPoint("TOPLEFT", container, "TOPLEFT", 0, state.y)
+        state.y = state.y - 18
+    else
+        if state.x + pw > state.maxW then
+            state.x = 0
+            state.y = state.y - 18
+        end
+        pill:ClearAllPoints()
+        pill:SetPoint("TOPLEFT", container, "TOPLEFT", state.x, state.y)
+        state.x = state.x + pw + 5
+    end
+    state.pIdx = state.pIdx + 1
 end
 
 local function PopulateCard(card, item)
@@ -1066,6 +1148,11 @@ local function PopulateCard(card, item)
     if u and u.subType and subTypeText ~= "" then
         subTypeText = "|cFFFF4040" .. subTypeText .. "|r"
     end
+    local extraOther = u and u.other or nil
+    if extraOther and slotDisplayName ~= "" and string.lower(extraOther) == string.lower(slotDisplayName) then
+        slotDisplayName = "|cFFFF4040" .. slotDisplayName .. "|r"
+        extraOther = nil
+    end
     local reqStr = ""
     if item.reqLevel and item.reqLevel > 0 then
         local lvlLabel = "Req Lvl " .. item.reqLevel
@@ -1074,7 +1161,7 @@ local function PopulateCard(card, item)
         end
         reqStr = "  •  " .. lvlLabel
     end
-    local otherStr = (u and u.other) and ("  •  |cFFFF4040" .. u.other .. "|r") or ""
+    local otherStr = extraOther and ("  •  |cFFFF4040" .. extraOther .. "|r") or ""
     local typeInfo = (item.itemType or "") .. " / " .. subTypeText .. (slotDisplayName ~= "" and (" / " .. slotDisplayName) or "") .. reqStr .. otherStr
     card.typeText:SetText(typeInfo)
 
@@ -1082,67 +1169,52 @@ local function PopulateCard(card, item)
     if item.parsed then
         if item.parsed.armor and item.parsed.armor > 0 then baseStats = baseStats .. item.parsed.armor .. " Armor  " end
         if item.parsed.block and item.parsed.block > 0 then baseStats = baseStats .. item.parsed.block .. " Block  " end
-        if item.parsed.dps and item.parsed.dps > 0 then baseStats = baseStats .. item.parsed.dps .. " DPS  " end
-        if item.parsed.speed and item.parsed.speed > 0 then baseStats = baseStats .. "Speed " .. item.parsed.speed .. "  " end
-        if item.parsed.dmgMin and item.parsed.dmgMax and item.parsed.dmgMin > 0 then baseStats = baseStats .. item.parsed.dmgMin .. "–" .. item.parsed.dmgMax .. " Damage" end
     end
-    card.baseStatsText:SetText(baseStats)
+    card.pillContainer:ClearAllPoints()
+    if baseStats ~= "" then
+        card.baseStatsText:SetText(baseStats)
+        card.baseStatsText:Show()
+        card.pillContainer:SetPoint("TOPLEFT", 60, -50)
+    else
+        card.baseStatsText:SetText("")
+        card.baseStatsText:Hide()
+        card.pillContainer:SetPoint("TOPLEFT", 60, -38)
+    end
+    card.pillContainer:SetPoint("BOTTOMRIGHT", -120, 5)
 
     -- Pills
     if card.pillContainer.pills then
         for _, p in ipairs(card.pillContainer.pills) do p:Hide() end
     end
-    local pIdx = 1
-    local xPill, yPill = 0, 0
     local maxW = card.pillContainer:GetWidth()
     if maxW <= 0 then maxW = 360 end
+    local pillState = { pIdx = 1, x = 0, y = 0, maxW = maxW }
+
+    if item.parsed then
+        if item.parsed.dmgMin and item.parsed.dmgMin > 0 then
+            AddCardPill(card.pillContainer, pillState, "Min Dmg " .. item.parsed.dmgMin, "min damage", "Min Damage")
+        end
+        if item.parsed.dmgMax and item.parsed.dmgMax > 0 then
+            AddCardPill(card.pillContainer, pillState, "Max Dmg " .. item.parsed.dmgMax, "max damage", "Max Damage")
+        end
+        if item.parsed.dps and item.parsed.dps > 0 then
+            AddCardPill(card.pillContainer, pillState, item.parsed.dps .. " DPS", "dps", "DPS")
+        end
+        if item.parsed.speed and item.parsed.speed > 0 then
+            AddCardPill(card.pillContainer, pillState, "Speed " .. item.parsed.speed, "speed", "Speed")
+        end
+    end
 
     if item.parsed and item.parsed.stats then
         for statName, statVal in pairs(item.parsed.stats) do
-            local pill = GetOrCreatePill(card.pillContainer, pIdx)
-            pill:Show()
-            pill.text:SetText("+" .. statVal .. " " .. FormatStatLabel(statName))
-            pill.text:SetTextColor(1, 1, 1)
-            local pw = pill.text:GetStringWidth() + 10
-            pill:SetSize(pw, 16)
-
-            if pill.SetBackdropBorderColor then
-                if AGS.SortKey == statName then
-                    pill:SetBackdropBorderColor(0.8, 0.8, 0.2, 1)
-                else
-                    pill:SetBackdropBorderColor(0.35, 0.35, 0.35, 1)
-                end
-            end
-
-            pill:SetScript("OnClick", function()
-                if AGS.SetSort then AGS:SetSort(statName) end
-            end)
-
-            if xPill + pw > maxW then
-                xPill = 0
-                yPill = yPill - 18
-            end
-            pill:ClearAllPoints()
-            pill:SetPoint("TOPLEFT", card.pillContainer, "TOPLEFT", xPill, yPill)
-            xPill = xPill + pw + 5
-            pIdx = pIdx + 1
+            local label = FormatStatLabel(statName)
+            AddCardPill(card.pillContainer, pillState, "+" .. statVal .. " " .. label, statName, label)
         end
     end
 
     if item.parsed and item.parsed.effects then
         for _, eff in ipairs(item.parsed.effects) do
-            local pill = GetOrCreatePill(card.pillContainer, pIdx)
-            pill:Show()
-            pill.text:SetText(eff)
-            pill.text:SetTextColor(0.2, 1, 0.2)
-            local pw = math.min(pill.text:GetStringWidth() + 10, maxW)
-            pill:SetSize(pw, 16)
-
-            if xPill > 0 then xPill = 0; yPill = yPill - 18 end
-            pill:ClearAllPoints()
-            pill:SetPoint("TOPLEFT", card.pillContainer, "TOPLEFT", xPill, yPill)
-            yPill = yPill - 18
-            pIdx = pIdx + 1
+            AddCardPill(card.pillContainer, pillState, eff, nil, nil, 0.2, 1, 0.2)
         end
     end
 

@@ -17,6 +17,7 @@ AGS.Filters = {
     maxBuyout = 0,
     minDamage = 0, maxDamage = 0,
     minDPS = 0, maxDPS = 0,
+    minSpeed = 0, maxSpeed = 0,
     minArmor = 0, maxArmor = 0,
     stats = {}
 }
@@ -168,18 +169,32 @@ local STAT_CANONICAL_NAMES = {
     ["hp5"]                         = "hp5",
     ["all stats"]                   = "all stats",
     ["all resistances"]             = "all resistances",
+    ["min damage"]                  = "min damage",
+    ["min dmg"]                     = "min damage",
+    ["minimum damage"]              = "min damage",
+    ["max damage"]                  = "max damage",
+    ["max dmg"]                     = "max damage",
+    ["maximum damage"]              = "max damage",
+    ["dps"]                         = "dps",
+    ["weapon dps"]                  = "dps",
+    ["speed"]                       = "speed",
+    ["attack speed"]                = "speed",
+    ["weapon speed"]                = "speed",
 }
 
 local function CanonicalizeStatName(rawName)
     local lower = string.lower(rawName or "")
     lower = string.gsub(lower, "%.+$", "")
     lower = string.gsub(lower, "^%s*(.-)%s*$", "%1")
+    if STAT_CANONICAL_NAMES[lower] then
+        return STAT_CANONICAL_NAMES[lower]
+    end
     -- Normalize "X Spell Damage" / "X Damage" variants
     local school = string.match(lower, "^(%a+)%s+damage$")
     if school and school ~= "spell" then
         return school .. " spell damage"
     end
-    return STAT_CANONICAL_NAMES[lower] or lower
+    return lower
 end
 
 -- Ordered most-specific first so combined lines aren't swallowed by generic rules
@@ -568,6 +583,10 @@ end
 ---------------------------------------------------------------------------
 local function ResolveStatValue(parsed, statQuery)
     local canonical = CanonicalizeStatName(statQuery)
+    if canonical == "dps" then return (parsed.dps and parsed.dps > 0) and parsed.dps or nil end
+    if canonical == "speed" then return (parsed.speed and parsed.speed > 0) and parsed.speed or nil end
+    if canonical == "min damage" then return (parsed.dmgMin and parsed.dmgMin > 0) and parsed.dmgMin or nil end
+    if canonical == "max damage" then return (parsed.dmgMax and parsed.dmgMax > 0) and parsed.dmgMax or nil end
     local val = parsed.stats[canonical]
     if val then return val end
     if canonical == "healing" and parsed.stats["spell power"] then
@@ -616,6 +635,9 @@ local function PassesFilter(item)
 
     if fl.minDPS > 0 and p.dps < fl.minDPS then return false end
     if fl.maxDPS > 0 and p.dps > fl.maxDPS then return false end
+
+    if fl.minSpeed > 0 and (p.speed or 0) < fl.minSpeed then return false end
+    if fl.maxSpeed > 0 and ((p.speed or 0) <= 0 or p.speed > fl.maxSpeed) then return false end
 
     if fl.minDamage > 0 or fl.maxDamage > 0 then
         local wMin = p.dmgMin or 0
@@ -732,8 +754,8 @@ function AGS:SortResults()
             valA = a.name
             valB = b.name
         else
-            valA = a.parsed.stats[self.SortKey] or 0
-            valB = b.parsed.stats[self.SortKey] or 0
+            valA = ResolveStatValue(a.parsed, self.SortKey) or 0
+            valB = ResolveStatValue(b.parsed, self.SortKey) or 0
         end
 
         if valA == valB then
