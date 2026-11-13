@@ -177,7 +177,7 @@ local ddQuality, ddCategory, ddSubtype, ddSlot, ddPawnSpec
 local editWeaponMin, editWeaponMax, editDpsMin, editDpsMax
 local editArmorMin, editArmorMax
 local editReqLevelMin, editReqLevelMax
-local checkUsableOnly, checkPawnUpgrades, editBuyoutMin, editBuyoutMax
+local checkUsableOnly, checkPawnUpgrades, editBuyoutGold, editBuyoutSilver, editBuyoutCopper
 local btnSearch, btnClear, txtStatus
 local statContainer
 
@@ -634,6 +634,23 @@ local function CreateArmorFilters(parent)
     editArmorMax = CreateCleanEditBox(c, 40, 20); editArmorMax:GetParent():SetPoint("TOPLEFT", 120, -2)
 end
 
+local function CreateCoinEditBox(parent, x, y, width, maxLetters, atlasName, fallbackTex)
+    local edit, frame = CreateCleanEditBox(parent, width, 20)
+    frame:SetPoint("TOPLEFT", x, y)
+    edit:SetTextInsets(4, 14, 0, 0)
+    if edit.SetNumeric then edit:SetNumeric(true) end
+    if edit.SetMaxLetters then edit:SetMaxLetters(maxLetters) end
+    local icon = frame:CreateTexture(nil, "OVERLAY")
+    icon:SetSize(11, 11)
+    icon:SetPoint("RIGHT", -3, 0)
+    if icon.SetAtlas then
+        icon:SetAtlas(atlasName)
+    else
+        icon:SetTexture(fallbackTex)
+    end
+    return edit
+end
+
 local function CreateRequirements(parent)
     local hasPawn = AGS.HasPawn and AGS:HasPawn()
     local c = CreateCollapsibleSection(parent, "Level & Price", hasPawn and 130 or 80)
@@ -642,10 +659,10 @@ local function CreateRequirements(parent)
     CreateLabel(c, "–", 114, -5)
     editReqLevelMax = CreateCleanEditBox(c, 40, 20); editReqLevelMax:GetParent():SetPoint("TOPLEFT", 124, -2)
 
-    CreateLabel(c, "Price (g):", 5, -33)
-    editBuyoutMin = CreateCleanEditBox(c, 40, 20); editBuyoutMin:GetParent():SetPoint("TOPLEFT", 70, -30)
-    CreateLabel(c, "–", 114, -33)
-    editBuyoutMax = CreateCleanEditBox(c, 40, 20); editBuyoutMax:GetParent():SetPoint("TOPLEFT", 124, -30)
+    CreateLabel(c, "Max price:", 5, -33)
+    editBuyoutGold   = CreateCoinEditBox(c, 68,  -30, 48, 6, "auctionhouse-icon-coin-gold",   "Interface\\MoneyFrame\\UI-GoldIcon")
+    editBuyoutSilver = CreateCoinEditBox(c, 119, -30, 38, 2, "auctionhouse-icon-coin-silver", "Interface\\MoneyFrame\\UI-SilverIcon")
+    editBuyoutCopper = CreateCoinEditBox(c, 160, -30, 38, 2, "auctionhouse-icon-coin-copper", "Interface\\MoneyFrame\\UI-CopperIcon")
 
     checkUsableOnly = CreateFrame("CheckButton", "FGS_CheckUsable", c, "UICheckButtonTemplate")
     checkUsableOnly:SetPoint("TOPLEFT", 0, -54)
@@ -797,7 +814,7 @@ local function ClearFilters()
     editArmorMin:SetText(""); editArmorMax:SetText("")
 
     editReqLevelMin:SetText(""); editReqLevelMax:SetText("")
-    editBuyoutMin:SetText(""); editBuyoutMax:SetText("")
+    editBuyoutGold:SetText(""); editBuyoutSilver:SetText(""); editBuyoutCopper:SetText("")
 
     checkUsableOnly:SetChecked(false)
     if checkPawnUpgrades then checkPawnUpgrades:SetChecked(false) end
@@ -830,10 +847,10 @@ local function SyncFiltersFromUI()
     fl.minLevel = getVal(editReqLevelMin)
     fl.maxLevel = getVal(editReqLevelMax)
 
-    local bMin = getVal(editBuyoutMin)
-    fl.minBuyout = bMin > 0 and (bMin * 10000) or 0
-    local bMax = getVal(editBuyoutMax)
-    fl.maxBuyout = bMax > 0 and (bMax * 10000) or 0
+    local maxGold   = getVal(editBuyoutGold)
+    local maxSilver = getVal(editBuyoutSilver)
+    local maxCopper = getVal(editBuyoutCopper)
+    fl.maxBuyout = (maxGold * 10000) + (maxSilver * 100) + maxCopper
 
     fl.minDamage = getVal(editWeaponMin); fl.maxDamage = getVal(editWeaponMax)
     fl.minDPS = getVal(editDpsMin); fl.maxDPS = getVal(editDpsMax)

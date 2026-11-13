@@ -14,7 +14,7 @@ AGS.Filters = {
     upgradesOnly = false,
     pawnScale = nil,    -- nil = Any visible Pawn spec (highest %), or ScaleName
 
-    minBuyout = 0, maxBuyout = 0,
+    maxBuyout = 0,
     minDamage = 0, maxDamage = 0,
     minDPS = 0, maxDPS = 0,
     minArmor = 0, maxArmor = 0,
@@ -560,7 +560,6 @@ local function PassesFilter(item)
 
     -- Price filter (require buyable price)
     if item.buyoutPrice <= 0 then return false end
-    if fl.minBuyout > 0 and item.buyoutPrice < fl.minBuyout then return false end
     if fl.maxBuyout > 0 and item.buyoutPrice > fl.maxBuyout then return false end
 
     -- Pawn Upgrades Only filter

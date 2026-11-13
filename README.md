@@ -29,7 +29,7 @@ Pawn is one of the smartest, cleanest gear-evaluation addons ever built for WoW,
 ## Quick Start
 
 1. Open any Auction House in-game and click the **Gear Scanner** tab (or type `/fgs` or `/gearscanner` at the AH).
-2. Choose **Rarity**, **Cat** (`Weapon` / `Armor`), **Sub**, and **Slot** (including `Held in Off-Hand`), plus optional **Req Level**, **Price (g)**, **Usable Only**, or **Pawn Upgrades Only**.
+2. Choose **Rarity**, **Cat** (`Weapon` / `Armor`), **Sub**, and **Slot** (including `Held in Off-Hand`), plus optional **Req Level**, **Max price** (gold / silver / copper), **Usable Only**, or **Pawn Upgrades Only**.
 3. Click **+ Add Stat Filter**, pick a stat from the dropdown, and enter optional Min/Max values.
 4. Click **Search AH**.
 5. Click **Buyout** on a card to verify the live listing, then click **Confirm Buy** to purchase.
