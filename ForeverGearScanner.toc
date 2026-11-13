@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: ForeverGearScanner
-## Notes: PoE2-style AH Gear Scanner with C_AuctionHouse pre-filtering, C_TooltipInfo parsing, and optional Pawn integration.
+## Notes: Stat-based Auction House gear browser with card views, slot and stat filters, and optional Pawn upgrade scoring.
 ## Author: Eztatic
 ## Version: 2.0.0
 ## Category: Auctions
