@@ -1,0 +1,14 @@
+## Interface: 16001
+## Title: ForeverGearScanner
+## Notes: PoE2-style AH Gear Scanner with C_AuctionHouse pre-filtering, C_TooltipInfo parsing, and optional Pawn integration.
+## Author: Eztatic
+## Version: 2.0.0
+## Category: Auctions
+## X-Category: Auction/Economy
+## X-License: MIT
+## IconTexture: Interface\AddOns\ForeverGearScanner\Textures\Logo
+## OptionalDependencies: Pawn
+## SavedVariables: ForeverGearScannerDB
+
+core.lua
+ui.lua
