@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.0.0
+## v1.0.0
 
 - **WoW: Forever architecture (`Interface: 16001`):** Rebuilt Auction House scanning on `C_AuctionHouse` browse queries, `C_TooltipInfo` / tooltip scanning, and `AUCTION_HOUSE_THROTTLED_SYSTEM_READY` backoff handling.
 - **Equipable-only AH scoping:** Searches target `Weapon` and `Armor` classes only - no Trade Goods, Containers, or Consumables cluttering results.
