@@ -157,6 +157,28 @@ local function GetQualityRGB(quality)
     return 1, 1, 1
 end
 
+local function FormatExistingItemLabel(existing)
+    if not existing or existing == "" then return nil end
+    if string.find(existing, "|H", 1, true) then return existing end
+    local name, link
+    if C_Item and C_Item.GetItemInfo then
+        name, link = C_Item.GetItemInfo(existing)
+    elseif GetItemInfo then
+        name, link = GetItemInfo(existing)
+    end
+    if link then return link end
+    if name then return name end
+    local id = tonumber(string.match(existing, "item:(%d+)"))
+    if id then
+        if C_Item and C_Item.GetItemNameByID then
+            local byID = C_Item.GetItemNameByID(id)
+            if byID then return byID end
+        end
+        return "Item #" .. id
+    end
+    return existing
+end
+
 ---------------------------------------------------------------------------
 -- UI Handles & State
 ---------------------------------------------------------------------------
@@ -936,8 +958,9 @@ local function CreateItemCard(parent)
         else
             GameTooltip:AddLine(string.format("+%.1f%% score increase", self.item.pawnUpgrade), 1, 1, 1)
         end
-        if self.item.pawnExisting then
-            GameTooltip:AddLine("Replaces: " .. self.item.pawnExisting, 0.8, 0.8, 0.8)
+        local existingLabel = FormatExistingItemLabel(self.item.pawnExisting)
+        if existingLabel then
+            GameTooltip:AddLine("Replaces: " .. existingLabel, 0.8, 0.8, 0.8)
         end
         GameTooltip:AddLine("Click to sort by Pawn upgrade", 0.6, 0.6, 0.6)
         GameTooltip:Show()
