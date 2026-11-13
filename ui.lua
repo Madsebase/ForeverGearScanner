@@ -1021,6 +1021,12 @@ local function PopulateCard(card, item)
     card.itemLink = item.link
     card.itemKey = item.itemKey
     card.iconTex:SetTexture(item.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
+    local u = item.unusable
+    if u and u.any then
+        card.iconTex:SetVertexColor(1, 0.35, 0.35)
+    else
+        card.iconTex:SetVertexColor(1, 1, 1)
+    end
 
     local r, g, b = GetQualityRGB(item.quality)
     card.qStrip:SetVertexColor(r, g, b)
@@ -1056,8 +1062,20 @@ local function PopulateCard(card, item)
     end
 
     local slotDisplayName = INVTYPE_NAMES[item.equipSlot] or item.equipSlot or ""
-    local reqStr = (item.reqLevel and item.reqLevel > 0) and ("  •  Req Lvl " .. item.reqLevel) or ""
-    local typeInfo = (item.itemType or "") .. " / " .. (item.itemSubType or "") .. (slotDisplayName ~= "" and (" / " .. slotDisplayName) or "") .. reqStr
+    local subTypeText = item.itemSubType or ""
+    if u and u.subType and subTypeText ~= "" then
+        subTypeText = "|cFFFF4040" .. subTypeText .. "|r"
+    end
+    local reqStr = ""
+    if item.reqLevel and item.reqLevel > 0 then
+        local lvlLabel = "Req Lvl " .. item.reqLevel
+        if u and u.level then
+            lvlLabel = "|cFFFF4040" .. lvlLabel .. "|r"
+        end
+        reqStr = "  •  " .. lvlLabel
+    end
+    local otherStr = (u and u.other) and ("  •  |cFFFF4040" .. u.other .. "|r") or ""
+    local typeInfo = (item.itemType or "") .. " / " .. subTypeText .. (slotDisplayName ~= "" and (" / " .. slotDisplayName) or "") .. reqStr .. otherStr
     card.typeText:SetText(typeInfo)
 
     local baseStats = ""

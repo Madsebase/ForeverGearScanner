@@ -391,6 +391,35 @@ AGS.ParseLine = ParseLine
 ---------------------------------------------------------------------------
 -- Tooltip Parser (Modern C_TooltipInfo with GameTooltip fallback)
 ---------------------------------------------------------------------------
+local function IsRedRGB(r, g, b)
+    return r and g and b and (r > 0.85 and g < 0.35 and b < 0.35)
+end
+
+local function GetTooltipColorRGB(c)
+    if not c then return nil end
+    if c.GetRGB then return c:GetRGB() end
+    return c.r, c.g, c.b
+end
+
+local function RecordRedTooltipText(text, isRight, parsed)
+    if not text or text == "" then return end
+    local trimmed = text:match("^%s*(.-)%s*$")
+    if trimmed == "" then return end
+    local u = parsed.unusable
+    for _, existing in ipairs(u.reasons) do
+        if existing == trimmed then return end
+    end
+    table.insert(u.reasons, trimmed)
+    local lower = string.lower(trimmed)
+    if string.find(lower, "requires level", 1, true) then
+        u.level = true
+    elseif isRight then
+        u.subType = true
+    elseif not u.other then
+        u.other = trimmed
+    end
+end
+
 local function ParseItemKeyTooltip(itemKey)
     local parsed = {
         armor = 0, block = 0,
@@ -399,6 +428,7 @@ local function ParseItemKeyTooltip(itemKey)
         stats = {},
         effects = {},
         allLines = {},
+        unusable = { level = false, subType = false, other = nil, reasons = {} },
         itemLink = nil,
     }
 
@@ -408,6 +438,12 @@ local function ParseItemKeyTooltip(itemKey)
             parsed.itemLink = data.hyperlink
             for _, line in ipairs(data.lines) do
                 ParseLine(line.leftText, line.rightText, parsed)
+                if IsRedRGB(GetTooltipColorRGB(line.leftColor)) then
+                    RecordRedTooltipText(line.leftText, false, parsed)
+                end
+                if IsRedRGB(GetTooltipColorRGB(line.rightColor)) then
+                    RecordRedTooltipText(line.rightText, true, parsed)
+                end
             end
             return parsed
         end
@@ -427,7 +463,15 @@ local function ParseItemKeyTooltip(itemKey)
     for i = 1, scanTip:NumLines() do
         local leftLine = _G["FGS_ScanTipTextLeft"..i]
         local rightLine = _G["FGS_ScanTipTextRight"..i]
-        ParseLine(leftLine and leftLine:GetText(), rightLine and rightLine:GetText(), parsed)
+        local lText = leftLine and leftLine:GetText()
+        local rText = rightLine and rightLine:GetText()
+        ParseLine(lText, rText, parsed)
+        if leftLine and leftLine.GetTextColor and IsRedRGB(leftLine:GetTextColor()) then
+            RecordRedTooltipText(lText, false, parsed)
+        end
+        if rightLine and rightLine.GetTextColor and IsRedRGB(rightLine:GetTextColor()) then
+            RecordRedTooltipText(rText, true, parsed)
+        end
     end
 
     return parsed
@@ -635,6 +679,17 @@ local function BuildBrowseItem(browseResult)
 
     local pawnPct, pawnScale, pawnExisting, pawnUpgrades = EvaluatePawnUpgrade(link, itemKey.itemID)
 
+    local u = parsed.unusable or { level = false, subType = false, other = nil, reasons = {} }
+    local playerLevel = (UnitLevel and UnitLevel("player")) or 999
+    if finalReqLevel > 0 and playerLevel < finalReqLevel then
+        u.level = true
+    end
+    if u.other and itemSubType and itemSubType ~= "" and string.find(string.lower(u.other), string.lower(itemSubType), 1, true) then
+        u.subType = true
+        u.other = nil
+    end
+    u.any = (u.level or u.subType or (u.other ~= nil) or (#u.reasons > 0)) and true or false
+
     return {
         itemKey = itemKey,
         itemID = itemKey.itemID,
@@ -656,6 +711,7 @@ local function BuildBrowseItem(browseResult)
         pawnScale = pawnScale,
         pawnExisting = pawnExisting,
         pawnUpgrades = pawnUpgrades,
+        unusable = u,
         parsed = parsed,
     }
 end
