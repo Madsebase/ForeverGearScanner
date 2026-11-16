@@ -8,6 +8,12 @@ The default Auction House in **World of Warcraft: Forever** (`Interface: 16001`)
 
 **Forever Gear Scanner** adds a **Gear Scanner** tab to the Auction House and replaces tooltip hunting with scannable gear cards. Filter across 40 stats with min and max values, cap your Gold / Silver / Copper budget before scanning, spot unusable items at a glance, and see **Pawn** upgrade percentages right on the results.
 
+## Feature Video
+
+[![Forever Gear Scanner - Feature Video](https://img.youtube.com/vi/cQfqY-uiT_Q/maxresdefault.jpg)](https://youtu.be/cQfqY-uiT_Q)
+
+[Watch on YouTube](https://youtu.be/cQfqY-uiT_Q)
+
 ## What You Get
 
 - **Scannable gear cards instead of tooltip hunting:** Every card shows item level, required level, weapon or armor type, slot, damage/DPS/speed, full stats, and available listing count. Browse queries target equipable **Weapon** and **Armor** items directly on `C_AuctionHouse`, so consumables, trade goods, and bags never clutter your search.
