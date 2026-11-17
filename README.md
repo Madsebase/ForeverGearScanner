@@ -17,9 +17,9 @@ The default Auction House in **World of Warcraft: Forever** (`Interface: 16001`)
 ## What You Get
 
 - **Scannable gear cards instead of tooltip hunting:** Every card shows item level, required level, weapon or armor type, slot, damage/DPS/speed, full stats, and available listing count. Browse queries target equipable **Weapon** and **Armor** items directly on `C_AuctionHouse`, so consumables, trade goods, and bags never clutter your search.
-- **Filter across 40 stats with min/max values:** Search for Spell Power, Healing, school spell damage (Fire, Frost, Shadow, Nature, Arcane, Holy), Crit, Hit, Haste, MP5, Expertise, Defense, Block Value, and primary stats. Click an empty stat box to browse the full dropdown or type to narrow it down.
-- **Click any pill to sort or filter:** Every stat and weapon value (`Min Dmg`, `Max Dmg`, `DPS`, `Speed`, plus equip stats) appears as a clickable pill. Left-click a pill to sort results by that stat, or right-click it to add it to your Stat Filters.
-- **Held in Off-Hand and weapon filters that make sense:** Standard AH categories bury off-hand items under Miscellaneous armor. Forever Gear Scanner gives you direct **Held in Off-Hand** slot filtering plus min/max ranges for **Damage**, **DPS**, and **Speed**.
+- **Live sort bar & quick pivots:** Sort results from the top bar (`Price`, `Pawn %`, `Name`) with live result counts, or left-click any stat or weapon pill (`Min Dmg`, `Max Dmg`, `DPS`, `Speed`, plus equip stats) to sort by that value - right-click a pill to add it to your Stat Filters.
+- **Filter across 40 stats with min/max values:** Search for Spell Power, Healing, school spell damage (Fire, Frost, Shadow, Nature, Arcane, Holy), Crit, Hit, Haste, MP5, Expertise, Defense, Block Value, and primary stats. Click an empty `Stat...` box to browse the scrollable 40-stat dropdown or type to narrow it down.
+- **Held in Off-Hand and auto-expanding weapon/armor filters:** Standard AH categories bury off-hand items under Miscellaneous armor. Forever Gear Scanner gives you direct **Held in Off-Hand** slot filtering, keeps **Weapon Filters** (`Damage`, `DPS`, `Speed`) and **Armour Filters** tucked neatly under `Any Equipment`, and auto-expands the matching section when you switch **Cat**.
 - **Exact Gold / Silver / Copper price cap:** Set your max budget in coin boxes before scanning, and narrow results further by **Req Level**, **Rarity**, **Category**, **Subtype**, and **Slot**.
 - **Unusable gear warnings:** If **Usable Only** is unchecked, items your character cannot equip tint red on the icon and highlight the missing proficiency, level, or class requirement directly on the card.
 - **Safe 2-step buyout:** Clicking **Buyout** checks the cheapest live listing and switches the button to **Confirm Buy**. Nothing is bought until your second click.
@@ -39,7 +39,7 @@ The default Auction House in **World of Warcraft: Forever** (`Interface: 16001`)
 Forever Gear Scanner works on its own with no other addons required. If you also run **[Pawn](https://www.curseforge.com/wow/addons/pawn)** by **Vger**, the two integrate right inside the AH tab:
 
 - **Upgrade badges on every card:** See the highest upgrade percentage and matching spec (such as `+21% Affliction`) next to the item name.
-- **Spec-specific filtering and sorting:** Tick **Pawn Upgrades Only** and lock the **Spec** dropdown to a single spec, or keep it on `Any (Best)` and sort by biggest upgrade first.
+- **Spec-specific filtering and sorting:** Tick **Pawn Upgrades Only** and lock the **Spec** dropdown to a single spec, or keep it on `Any (Best)` and sort by biggest upgrade first. Switching specs re-filters and re-sorts current results live without re-scanning the AH.
 - **Exact replacement tooltips:** Hover any green Pawn badge to see the equipped item it replaces.
 
 Full credit to **Vger** for Pawn. Forever Gear Scanner reads your Pawn scales directly, so your AH searches use the same weights as your character sheet.

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.0
+
+- **Sort bar & result summary:** Added a top Sort bar (`Price`, `Pawn %`, `Name`) with live sort direction and result count, plus clear empty-state prompts before scanning or when no matches are found.
+- **Cleaner filter panel & placeholders:** Auto-collapsed `Weapon Filters` and `Armour Filters` under `Any Equipment` (auto-expanding when selecting `Weapon` or `Armor`), widened dropdowns to avoid truncation on `Held in Off-Hand` and `Two-Handed Axes`, and added `Stat...`, `Min`, and `Max` input placeholders.
+- **Card & dropdown polish:** Sized card right-column clearance dynamically so `Req Lvl` and red lock warnings never clip early, gave cards extra vertical breathing room, and inset the 40-stat autocomplete scrollbar so rows never clip.
+- **Filtering & buyout fixes:** Cleared hidden `Speed` inputs when switching to `Armor`, added `INVTYPE_RANGEDRIGHT` (Guns/Crossbows/Wands) support to `Slot = Ranged`, enforced `Req Level` min against level-0 items, matched `itemLevel` and `itemSuffix` on 2-step buyouts, cleared pending buy state on `AUCTION_HOUSE_CLOSED`, broadened combined spell power tooltip rules, and re-filtered cached results live when switching Pawn `Spec`.
+
 ## v1.0.0
 
 - **WoW: Forever architecture (`Interface: 16001`):** Rebuilt Auction House scanning on `C_AuctionHouse` browse queries, `C_TooltipInfo` / tooltip scanning, and `AUCTION_HOUSE_THROTTLED_SYSTEM_READY` backoff handling.
