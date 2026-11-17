@@ -3,6 +3,7 @@ local addonName, AGS = ...
 _G["ForeverGearScanner"] = AGS
 
 AGS.Results = {}
+AGS.RawResults = {}
 AGS.Filters = {
     name = "",
     minLevel = 0, maxLevel = 0,
@@ -34,6 +35,7 @@ local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
 f:RegisterEvent("AUCTION_HOUSE_SHOW")
+f:RegisterEvent("AUCTION_HOUSE_CLOSED")
 f:RegisterEvent("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
 f:RegisterEvent("AUCTION_HOUSE_BROWSE_RESULTS_ADDED")
 f:RegisterEvent("ITEM_KEY_ITEM_INFO_RECEIVED")
@@ -83,6 +85,7 @@ local INVTYPE_TO_ENUM = {
     INVTYPE_WEAPONOFFHAND  = Enum.InventoryType and Enum.InventoryType.IndexWeaponoffhandType,
     INVTYPE_HOLDABLE       = Enum.InventoryType and Enum.InventoryType.IndexHoldableType,
     INVTYPE_RANGED         = Enum.InventoryType and Enum.InventoryType.IndexRangedType,
+    INVTYPE_RANGEDRIGHT    = Enum.InventoryType and Enum.InventoryType.IndexRangedrightType,
     INVTYPE_THROWN         = Enum.InventoryType and Enum.InventoryType.IndexThrownType,
     INVTYPE_RELIC          = Enum.InventoryType and Enum.InventoryType.IndexRelicType,
     INVTYPE_TABARD         = Enum.InventoryType and Enum.InventoryType.IndexTabardType,
@@ -205,7 +208,7 @@ local EQUIP_STAT_RULES = {
         AddStat(stats, "spell power", ToNumber(v2))
     end },
     -- "Equip: Increases damage and healing done by magical spells and effects by up to 6."
-    { pattern = "[Ii]ncreases damage and healing done by .-spells .-by up to ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases .-damage and healing .-by up to ([%d,]+)", fn = function(stats, v1)
         AddStat(stats, "spell power", ToNumber(v1))
     end },
     -- School spell damage: "Equip: Increases damage done by Fire spells and effects by up to 12."
@@ -563,19 +566,26 @@ local function EvaluatePawnUpgrade(itemLink, itemID)
     return pct, scale, existing, byScale
 end
 
+function AGS:RebuildResults()
+    local filtered = {}
+    for _, item in ipairs(self.RawResults) do
+        if not self.Filters.upgradesOnly or (item.pawnUpgrade or 0) > 0 then
+            table.insert(filtered, item)
+        end
+    end
+    self.Results = filtered
+    self:SortResults()
+end
+
 function AGS:SetPawnScale(scaleName)
     self.Filters.pawnScale = scaleName
-    for _, item in ipairs(self.Results) do
+    for _, item in ipairs(self.RawResults) do
         local pct, scale, existing = PickPawnUpgrade(item.pawnUpgrades, scaleName)
         item.pawnUpgrade = pct
         item.pawnScale = scale
         item.pawnExisting = existing
     end
-    if self.SortKey == "pawn" then
-        self:SortResults()
-    elseif self.UI and self.UI.UpdateResults then
-        self.UI:UpdateResults()
-    end
+    self:RebuildResults()
 end
 
 ---------------------------------------------------------------------------
@@ -595,7 +605,7 @@ local function ResolveStatValue(parsed, statQuery)
     return nil
 end
 
-local function PassesFilter(item)
+local function PassesFilter(item, ignoreUpgradesOnly)
     local fl = AGS.Filters
 
     -- Gear-only: reject items without an equipment slot
@@ -612,21 +622,23 @@ local function PassesFilter(item)
     if fl.invTypeFilter and fl.invTypeFilter ~= "" then
         if fl.invTypeFilter == "INVTYPE_CHEST" then
             if itemSlot ~= "INVTYPE_CHEST" and itemSlot ~= "INVTYPE_ROBE" then return false end
+        elseif fl.invTypeFilter == "INVTYPE_RANGED" then
+            if itemSlot ~= "INVTYPE_RANGED" and itemSlot ~= "INVTYPE_RANGEDRIGHT" then return false end
         else
             if itemSlot ~= fl.invTypeFilter then return false end
         end
     end
 
     -- Required level safeguard
-    if fl.minLevel > 0 and item.reqLevel > 0 and item.reqLevel < fl.minLevel then return false end
-    if fl.maxLevel > 0 and item.reqLevel > 0 and item.reqLevel > fl.maxLevel then return false end
+    if fl.minLevel > 0 and (item.reqLevel or 0) < fl.minLevel then return false end
+    if fl.maxLevel > 0 and (item.reqLevel or 0) > fl.maxLevel then return false end
 
     -- Price filter (require buyable price)
     if item.buyoutPrice <= 0 then return false end
     if fl.maxBuyout > 0 and item.buyoutPrice > fl.maxBuyout then return false end
 
     -- Pawn Upgrades Only filter
-    if fl.upgradesOnly and (item.pawnUpgrade or 0) <= 0 then return false end
+    if not ignoreUpgradesOnly and fl.upgradesOnly and (item.pawnUpgrade or 0) <= 0 then return false end
 
     -- Tooltip-based filters
     local p = item.parsed
@@ -808,6 +820,13 @@ local function BuildClassFilters()
         elseif invEnum == Enum.InventoryType.IndexCloakType then
             table.insert(filters, { classID = Enum.ItemClass.Armor, subClassID = Enum.ItemArmorSubclass.Cloth, inventoryType = invEnum })
             return filters
+        elseif Enum.InventoryType.IndexRangedType and (invEnum == Enum.InventoryType.IndexRangedType or invEnum == Enum.InventoryType.IndexRangedrightType) then
+            local weaponClass = fl.classID or Enum.ItemClass.Weapon
+            table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexRangedType })
+            if Enum.InventoryType.IndexRangedrightType then
+                table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexRangedrightType })
+            end
+            return filters
         end
     end
 
@@ -861,6 +880,7 @@ function AGS:StartSearch()
     end
 
     self.Results = {}
+    self.RawResults = {}
     self.IsScanning = true
     scanState.pendingResults = {}
     scanState.batchIndex = 0
@@ -909,8 +929,19 @@ end
 ---------------------------------------------------------------------------
 -- Quick-Buy (Hardware-event safe two-click flow: Search -> Confirm Buy)
 ---------------------------------------------------------------------------
+local function ItemKeysMatch(a, b)
+    if not a or not b or a.itemID ~= b.itemID then return false end
+    if (a.itemLevel or 0) ~= (b.itemLevel or 0) then return false end
+    if (a.itemSuffix or 0) ~= (b.itemSuffix or 0) then return false end
+    return true
+end
+
 function AGS:QuickBuyOrInspect(item)
     if not item or not item.itemKey then return end
+    if AuctionHouseFrame and AuctionHouseFrame.IsShown and not AuctionHouseFrame:IsShown() then
+        if self.UI then self.UI:SetStatus("Open the Auction House to buy items.") end
+        return
+    end
 
     -- Click 2: PlaceBid MUST execute directly inside OnClick (#hwevent protected on Forever)
     if item.readyAuctionID and item.readyBuyoutAmount and item.readyBuyoutAmount > 0 then
@@ -966,8 +997,11 @@ local function OnUpdate(self, elapsed)
                     batch[i]._retried = true
                     table.insert(batch, batch[i])
                 end
-            elseif item and PassesFilter(item) then
-                table.insert(AGS.Results, item)
+            elseif item and PassesFilter(item, true) then
+                table.insert(AGS.RawResults, item)
+                if not AGS.Filters.upgradesOnly or (item.pawnUpgrade or 0) > 0 then
+                    table.insert(AGS.Results, item)
+                end
             end
         end
 
@@ -1043,6 +1077,18 @@ f:SetScript("OnEvent", function(self, event, ...)
         if AGS.UI and AGS.UI.Initialize and not AGS.UI.initialized then
             C_Timer.After(0.05, function() AGS.UI:Initialize() end)
         end
+    elseif event == "AUCTION_HOUSE_CLOSED" then
+        AGS.IsScanning = false
+        scanState.phase = SCAN_STATE_IDLE
+        scanState.pendingResults = {}
+        scanState.batchIndex = 0
+        scanState.pendingQuery = nil
+        scanState.pendingMore = false
+        scanState.pendingBuyItem = nil
+        for _, it in ipairs(AGS.RawResults) do
+            it.readyAuctionID = nil
+            it.readyBuyoutAmount = nil
+        end
     elseif event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then
         if not AGS.IsScanning then return end
         QueueBrowseBatch(C_AuctionHouse.GetBrowseResults())
@@ -1079,7 +1125,7 @@ f:SetScript("OnEvent", function(self, event, ...)
     elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then
         local itemKey = ...
         local pending = scanState.pendingBuyItem
-        if pending and pending.itemKey and itemKey and itemKey.itemID == pending.itemKey.itemID then
+        if pending and ItemKeysMatch(itemKey, pending.itemKey) then
             scanState.pendingBuyItem = nil
             local numResults = C_AuctionHouse.GetNumItemSearchResults(itemKey)
             if numResults and numResults > 0 then
