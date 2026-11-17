@@ -197,6 +197,9 @@ local editReqLevelMin, editReqLevelMax
 local checkUsableOnly, checkPawnUpgrades, editBuyoutGold, editBuyoutSilver, editBuyoutCopper
 local btnSearch, btnClear, txtStatus
 local statContainer
+local sortBar, sortActiveText, emptyText
+local sortButtons = {}
+local hasSearched = false
 
 ---------------------------------------------------------------------------
 -- Autocomplete Popup
@@ -339,7 +342,7 @@ local function RegisterEditBoxTabNav(edit)
     end)
 end
 
-local function CreateCleanEditBox(parent, width, height)
+local function CreateCleanEditBox(parent, width, height, placeholder)
     local frame = CreateFrame("Frame", nil, parent, BACKDROP_TEMPLATE)
     frame:SetSize(width, height or 20)
     ApplyBackdrop(frame, EDITBOX_BACKDROP, 0.02, 0.02, 0.02, 0.9, 0.35, 0.35, 0.35, 0.9)
@@ -350,12 +353,35 @@ local function CreateCleanEditBox(parent, width, height)
     edit:SetFontObject("GameFontHighlightSmall")
     edit:SetAutoFocus(false)
 
+    local phText
+    if placeholder and placeholder ~= "" then
+        phText = edit:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        phText:SetPoint("LEFT", 6, 0)
+        phText:SetPoint("RIGHT", -4, 0)
+        phText:SetJustifyH("LEFT")
+        phText:SetText(placeholder)
+        phText:SetTextColor(0.45, 0.45, 0.45, 0.85)
+    end
+
+    local function UpdatePlaceholder()
+        if not phText then return end
+        local txt = edit:GetText()
+        if (not txt or txt == "") and not edit:HasFocus() then
+            phText:Show()
+        else
+            phText:Hide()
+        end
+    end
+
     edit:SetScript("OnEditFocusGained", function()
         if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(0.8, 0.8, 0.2, 1) end
+        UpdatePlaceholder()
     end)
     edit:SetScript("OnEditFocusLost", function()
         if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.9) end
+        UpdatePlaceholder()
     end)
+    edit:SetScript("OnTextChanged", UpdatePlaceholder)
     edit:SetScript("OnEscapePressed", function(self)
         self:ClearFocus()
     end)
@@ -367,29 +393,40 @@ end
 ---------------------------------------------------------------------------
 -- Collapsible Sections
 ---------------------------------------------------------------------------
+local function SetSectionExpanded(section, expanded)
+    section.isExpanded = expanded and true or false
+    if section.isExpanded then
+        section.headerText:SetText("|cFFFFD700[-] " .. section.title .. "|r")
+        section.content:Show()
+    else
+        section.headerText:SetText("|cFFFFD700[+] " .. section.title .. "|r")
+        section.content:Hide()
+    end
+end
+
 local function LayoutFilterPanel()
     if not lpScrollChild then return end
-    local yOffset = -5
+    local yOffset = -4
     for _, section in ipairs(collapsibleSections) do
         if section.frame:IsShown() then
             section.frame:ClearAllPoints()
-            section.frame:SetPoint("TOPLEFT", lpScrollChild, "TOPLEFT", 5, yOffset)
-            section.frame:SetPoint("RIGHT", lpScrollChild, "RIGHT", -5, 0)
+            section.frame:SetPoint("TOPLEFT", lpScrollChild, "TOPLEFT", 4, yOffset)
+            section.frame:SetPoint("RIGHT", lpScrollChild, "RIGHT", -4, 0)
 
             if section.content:IsShown() then
-                local height = section.contentHeight + 25
+                local height = section.contentHeight + 23
                 section.frame:SetHeight(height)
-                yOffset = yOffset - height - 5
+                yOffset = yOffset - height - 4
             else
-                section.frame:SetHeight(25)
-                yOffset = yOffset - 25 - 5
+                section.frame:SetHeight(23)
+                yOffset = yOffset - 23 - 4
             end
         end
     end
-    lpScrollChild:SetHeight(math.abs(yOffset) + 30)
+    lpScrollChild:SetHeight(math.abs(yOffset) + 16)
 end
 
-local function CreateCollapsibleSection(parent, title, contentHeight)
+local function CreateCollapsibleSection(parent, title, contentHeight, defaultCollapsed)
     local frame = CreateFrame("Frame", nil, parent, BACKDROP_TEMPLATE)
     ApplyBackdrop(frame, PANEL_BACKDROP, 0.06, 0.06, 0.06, 0.95, 0.25, 0.25, 0.25, 0.9)
 
@@ -400,10 +437,9 @@ local function CreateCollapsibleSection(parent, title, contentHeight)
 
     local headerText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     headerText:SetPoint("LEFT", 4, 0)
-    headerText:SetText("|cFFFFD700[-] " .. title .. "|r")
 
     local content = CreateFrame("Frame", nil, frame)
-    content:SetPoint("TOPLEFT", 4, -22)
+    content:SetPoint("TOPLEFT", 4, -20)
     content:SetPoint("BOTTOMRIGHT", -4, -4)
 
     local section = {
@@ -411,19 +447,15 @@ local function CreateCollapsibleSection(parent, title, contentHeight)
         content = content,
         header = header,
         headerText = headerText,
+        title = title,
         contentHeight = contentHeight,
-        isExpanded = true
+        isExpanded = not defaultCollapsed
     }
 
+    SetSectionExpanded(section, not defaultCollapsed)
+
     header:SetScript("OnClick", function()
-        section.isExpanded = not section.isExpanded
-        if section.isExpanded then
-            headerText:SetText("|cFFFFD700[-] " .. title .. "|r")
-            content:Show()
-        else
-            headerText:SetText("|cFFFFD700[+] " .. title .. "|r")
-            content:Hide()
-        end
+        SetSectionExpanded(section, not section.isExpanded)
         LayoutFilterPanel()
     end)
 
@@ -447,9 +479,19 @@ local function UpdateContextualFilters()
 
     for _, sec in ipairs(collapsibleSections) do
         if sec.id == "WEAPON" then
-            if showWeapon then sec.frame:Show() else sec.frame:Hide() end
+            if showWeapon then
+                sec.frame:Show()
+                SetSectionExpanded(sec, currentClassID == Enum.ItemClass.Weapon)
+            else
+                sec.frame:Hide()
+            end
         elseif sec.id == "ARMOR" then
-            if showArmor then sec.frame:Show() else sec.frame:Hide() end
+            if showArmor then
+                sec.frame:Show()
+                SetSectionExpanded(sec, currentClassID == Enum.ItemClass.Armor)
+            else
+                sec.frame:Hide()
+            end
         end
     end
 
@@ -486,13 +528,13 @@ end
 -- Filter Sections
 ---------------------------------------------------------------------------
 local function CreateTypeFilters(parent)
-    local c = CreateCollapsibleSection(parent, "Type Filters", 120)
+    local c = CreateCollapsibleSection(parent, "Type Filters", 104)
 
     -- Rarity
-    CreateLabel(c, "Rarity:", 5, -5)
+    CreateLabel(c, "Rarity:", 5, -4)
     ddQuality = CreateFrame("Frame", "FGS_DDQuality", c, "UIDropDownMenuTemplate")
-    ddQuality:SetPoint("TOPLEFT", 45, -2)
-    UIDropDownMenu_SetWidth(ddQuality, 110)
+    ddQuality:SetPoint("TOPLEFT", 38, -1)
+    UIDropDownMenu_SetWidth(ddQuality, 134)
     UIDropDownMenu_Initialize(ddQuality, function()
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
@@ -522,10 +564,10 @@ local function CreateTypeFilters(parent)
     UIDropDownMenu_SetText(ddQuality, "Any")
 
     -- Category (Weapon / Armor only)
-    CreateLabel(c, "Cat:", 5, -35)
+    CreateLabel(c, "Cat:", 5, -29)
     ddCategory = CreateFrame("Frame", "FGS_DDCategory", c, "UIDropDownMenuTemplate")
-    ddCategory:SetPoint("TOPLEFT", 45, -32)
-    UIDropDownMenu_SetWidth(ddCategory, 110)
+    ddCategory:SetPoint("TOPLEFT", 38, -26)
+    UIDropDownMenu_SetWidth(ddCategory, 134)
     UIDropDownMenu_Initialize(ddCategory, function()
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
@@ -566,10 +608,10 @@ local function CreateTypeFilters(parent)
     UIDropDownMenu_SetText(ddCategory, "Any Equipment")
 
     -- Subcategory
-    CreateLabel(c, "Sub:", 5, -65)
+    CreateLabel(c, "Sub:", 5, -54)
     ddSubtype = CreateFrame("Frame", "FGS_DDSubtype", c, "UIDropDownMenuTemplate")
-    ddSubtype:SetPoint("TOPLEFT", 45, -62)
-    UIDropDownMenu_SetWidth(ddSubtype, 110)
+    ddSubtype:SetPoint("TOPLEFT", 38, -51)
+    UIDropDownMenu_SetWidth(ddSubtype, 134)
     UIDropDownMenu_Initialize(ddSubtype, function()
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
@@ -606,10 +648,10 @@ local function CreateTypeFilters(parent)
     UIDropDownMenu_SetText(ddSubtype, "Any")
 
     -- Slot
-    CreateLabel(c, "Slot:", 5, -95)
+    CreateLabel(c, "Slot:", 5, -79)
     ddSlot = CreateFrame("Frame", "FGS_DDSlot", c, "UIDropDownMenuTemplate")
-    ddSlot:SetPoint("TOPLEFT", 45, -92)
-    UIDropDownMenu_SetWidth(ddSlot, 110)
+    ddSlot:SetPoint("TOPLEFT", 38, -76)
+    UIDropDownMenu_SetWidth(ddSlot, 134)
     UIDropDownMenu_Initialize(ddSlot, function()
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
@@ -638,31 +680,31 @@ local function CreateTypeFilters(parent)
 end
 
 local function CreateWeaponFilters(parent)
-    local c, sec = CreateCollapsibleSection(parent, "Weapon Filters", 88)
+    local c, sec = CreateCollapsibleSection(parent, "Weapon Filters", 78, true)
     sec.id = "WEAPON"
-    CreateLabel(c, "Damage:", 5, -5)
-    editWeaponMin = CreateCleanEditBox(c, 40, 20); editWeaponMin:GetParent():SetPoint("TOPLEFT", 65, -2)
-    CreateLabel(c, "–", 110, -5)
-    editWeaponMax = CreateCleanEditBox(c, 40, 20); editWeaponMax:GetParent():SetPoint("TOPLEFT", 120, -2)
+    CreateLabel(c, "Damage:", 5, -4)
+    editWeaponMin = CreateCleanEditBox(c, 40, 20, "Min"); editWeaponMin:GetParent():SetPoint("TOPLEFT", 65, -1)
+    CreateLabel(c, "–", 110, -4)
+    editWeaponMax = CreateCleanEditBox(c, 40, 20, "Max"); editWeaponMax:GetParent():SetPoint("TOPLEFT", 120, -1)
 
-    CreateLabel(c, "DPS:", 5, -35)
-    editDpsMin = CreateCleanEditBox(c, 40, 20); editDpsMin:GetParent():SetPoint("TOPLEFT", 65, -32)
-    CreateLabel(c, "–", 110, -35)
-    editDpsMax = CreateCleanEditBox(c, 40, 20); editDpsMax:GetParent():SetPoint("TOPLEFT", 120, -32)
+    CreateLabel(c, "DPS:", 5, -30)
+    editDpsMin = CreateCleanEditBox(c, 40, 20, "Min"); editDpsMin:GetParent():SetPoint("TOPLEFT", 65, -27)
+    CreateLabel(c, "–", 110, -30)
+    editDpsMax = CreateCleanEditBox(c, 40, 20, "Max"); editDpsMax:GetParent():SetPoint("TOPLEFT", 120, -27)
 
-    CreateLabel(c, "Speed:", 5, -65)
-    editSpeedMin = CreateCleanEditBox(c, 40, 20); editSpeedMin:GetParent():SetPoint("TOPLEFT", 65, -62)
-    CreateLabel(c, "–", 110, -65)
-    editSpeedMax = CreateCleanEditBox(c, 40, 20); editSpeedMax:GetParent():SetPoint("TOPLEFT", 120, -62)
+    CreateLabel(c, "Speed:", 5, -56)
+    editSpeedMin = CreateCleanEditBox(c, 40, 20, "Min"); editSpeedMin:GetParent():SetPoint("TOPLEFT", 65, -53)
+    CreateLabel(c, "–", 110, -56)
+    editSpeedMax = CreateCleanEditBox(c, 40, 20, "Max"); editSpeedMax:GetParent():SetPoint("TOPLEFT", 120, -53)
 end
 
 local function CreateArmorFilters(parent)
-    local c, sec = CreateCollapsibleSection(parent, "Armour Filters", 32)
+    local c, sec = CreateCollapsibleSection(parent, "Armour Filters", 28, true)
     sec.id = "ARMOR"
-    CreateLabel(c, "Armour:", 5, -5)
-    editArmorMin = CreateCleanEditBox(c, 40, 20); editArmorMin:GetParent():SetPoint("TOPLEFT", 65, -2)
-    CreateLabel(c, "–", 110, -5)
-    editArmorMax = CreateCleanEditBox(c, 40, 20); editArmorMax:GetParent():SetPoint("TOPLEFT", 120, -2)
+    CreateLabel(c, "Armour:", 5, -4)
+    editArmorMin = CreateCleanEditBox(c, 40, 20, "Min"); editArmorMin:GetParent():SetPoint("TOPLEFT", 65, -1)
+    CreateLabel(c, "–", 110, -4)
+    editArmorMax = CreateCleanEditBox(c, 40, 20, "Max"); editArmorMax:GetParent():SetPoint("TOPLEFT", 120, -1)
 end
 
 local function CreateCoinEditBox(parent, x, y, width, maxLetters, atlasName, fallbackTex)
@@ -684,19 +726,19 @@ end
 
 local function CreateRequirements(parent)
     local hasPawn = AGS.HasPawn and AGS:HasPawn()
-    local c = CreateCollapsibleSection(parent, "Level & Price", hasPawn and 130 or 80)
-    CreateLabel(c, "Req Level:", 5, -5)
-    editReqLevelMin = CreateCleanEditBox(c, 40, 20); editReqLevelMin:GetParent():SetPoint("TOPLEFT", 70, -2)
-    CreateLabel(c, "–", 114, -5)
-    editReqLevelMax = CreateCleanEditBox(c, 40, 20); editReqLevelMax:GetParent():SetPoint("TOPLEFT", 124, -2)
+    local c = CreateCollapsibleSection(parent, "Level & Price", hasPawn and 118 or 74)
+    CreateLabel(c, "Req Level:", 5, -4)
+    editReqLevelMin = CreateCleanEditBox(c, 40, 20, "Min"); editReqLevelMin:GetParent():SetPoint("TOPLEFT", 70, -1)
+    CreateLabel(c, "–", 114, -4)
+    editReqLevelMax = CreateCleanEditBox(c, 40, 20, "Max"); editReqLevelMax:GetParent():SetPoint("TOPLEFT", 124, -1)
 
-    CreateLabel(c, "Max price:", 5, -33)
-    editBuyoutGold   = CreateCoinEditBox(c, 68,  -30, 48, 6, "auctionhouse-icon-coin-gold",   "Interface\\MoneyFrame\\UI-GoldIcon")
-    editBuyoutSilver = CreateCoinEditBox(c, 119, -30, 38, 2, "auctionhouse-icon-coin-silver", "Interface\\MoneyFrame\\UI-SilverIcon")
-    editBuyoutCopper = CreateCoinEditBox(c, 160, -30, 38, 2, "auctionhouse-icon-coin-copper", "Interface\\MoneyFrame\\UI-CopperIcon")
+    CreateLabel(c, "Max price:", 5, -30)
+    editBuyoutGold   = CreateCoinEditBox(c, 68,  -27, 48, 6, "auctionhouse-icon-coin-gold",   "Interface\\MoneyFrame\\UI-GoldIcon")
+    editBuyoutSilver = CreateCoinEditBox(c, 119, -27, 38, 2, "auctionhouse-icon-coin-silver", "Interface\\MoneyFrame\\UI-SilverIcon")
+    editBuyoutCopper = CreateCoinEditBox(c, 160, -27, 38, 2, "auctionhouse-icon-coin-copper", "Interface\\MoneyFrame\\UI-CopperIcon")
 
     checkUsableOnly = CreateFrame("CheckButton", "FGS_CheckUsable", c, "UICheckButtonTemplate")
-    checkUsableOnly:SetPoint("TOPLEFT", 0, -54)
+    checkUsableOnly:SetPoint("TOPLEFT", 0, -50)
     checkUsableOnly:SetSize(24, 24)
     checkUsableOnly:SetChecked(false)
     local usableTxt = checkUsableOnly.Text or _G[checkUsableOnly:GetName().."Text"]
@@ -707,7 +749,7 @@ local function CreateRequirements(parent)
 
     if hasPawn then
         checkPawnUpgrades = CreateFrame("CheckButton", "FGS_CheckPawn", c, "UICheckButtonTemplate")
-        checkPawnUpgrades:SetPoint("TOPLEFT", 0, -78)
+        checkPawnUpgrades:SetPoint("TOPLEFT", 0, -72)
         checkPawnUpgrades:SetSize(24, 24)
         checkPawnUpgrades:SetChecked(false)
         local pawnTxt = checkPawnUpgrades.Text or _G[checkPawnUpgrades:GetName().."Text"]
@@ -716,10 +758,10 @@ local function CreateRequirements(parent)
             pawnTxt:SetFontObject("GameFontHighlightSmall")
         end
 
-        CreateLabel(c, "Spec:", 5, -106)
+        CreateLabel(c, "Spec:", 5, -98)
         ddPawnSpec = CreateFrame("Frame", "FGS_DDPawnSpec", c, "UIDropDownMenuTemplate")
-        ddPawnSpec:SetPoint("TOPLEFT", 35, -101)
-        UIDropDownMenu_SetWidth(ddPawnSpec, 120)
+        ddPawnSpec:SetPoint("TOPLEFT", 35, -94)
+        UIDropDownMenu_SetWidth(ddPawnSpec, 134)
         UIDropDownMenu_Initialize(ddPawnSpec, function()
             local info = UIDropDownMenu_CreateInfo()
             info.notCheckable = true
@@ -772,33 +814,35 @@ end
 
 local function AddStatFilterRow(statText, minVal, maxVal)
     local row = CreateFrame("Frame", nil, statContainer)
-    row:SetSize(210, 22)
+    row:SetSize(220, 22)
 
-    local editStat = CreateCleanEditBox(row, 80, 20)
+    local editStat = CreateCleanEditBox(row, 96, 20, "Stat...")
     editStat:GetParent():SetPoint("TOPLEFT", 0, 0)
-    editStat:SetText(statText or "")
     local prevFocusGained = editStat:GetScript("OnEditFocusGained")
     editStat:SetScript("OnEditFocusGained", function(self)
         if prevFocusGained then prevFocusGained(self) end
         ShowAutoComplete(self)
     end)
+    local prevTextChanged = editStat:GetScript("OnTextChanged")
     editStat:SetScript("OnTextChanged", function(self)
+        if prevTextChanged then prevTextChanged(self) end
         if self:HasFocus() then
             ShowAutoComplete(self)
         end
     end)
+    editStat:SetText(statText or "")
 
-    local editMin = CreateCleanEditBox(row, 30, 20)
-    editMin:GetParent():SetPoint("TOPLEFT", 88, 0)
+    local editMin = CreateCleanEditBox(row, 34, 20, "Min")
+    editMin:GetParent():SetPoint("TOPLEFT", 100, 0)
     editMin:SetText(minVal or "")
 
-    local editMax = CreateCleanEditBox(row, 30, 20)
-    editMax:GetParent():SetPoint("TOPLEFT", 124, 0)
+    local editMax = CreateCleanEditBox(row, 34, 20, "Max")
+    editMax:GetParent():SetPoint("TOPLEFT", 138, 0)
     editMax:SetText(maxVal or "")
 
     local btnRemove = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
     btnRemove:SetSize(20, 20)
-    btnRemove:SetPoint("TOPLEFT", 160, 0)
+    btnRemove:SetPoint("TOPLEFT", 176, 0)
     btnRemove:SetText("X")
     btnRemove:SetScript("OnClick", function()
         row:Hide()
@@ -931,17 +975,17 @@ end
 -- Item Cards & Virtual Scroll
 ---------------------------------------------------------------------------
 local CARD_POOL_SIZE = 10
-local CARD_HEIGHT = 90
+local CARD_HEIGHT = 96
 local resultScrollFrame
 local resultScrollChild
 
 local function CreateItemCard(parent)
     local card = CreateFrame("Frame", nil, parent, BACKDROP_TEMPLATE)
-    card:SetSize(parent:GetWidth() - 15, 85)
+    card:SetSize(parent:GetWidth() - 15, CARD_HEIGHT - 5)
     ApplyBackdrop(card, CARD_BACKDROP, 0.08, 0.08, 0.08, 0.95, 0.25, 0.25, 0.25, 0.8)
 
     local qStrip = card:CreateTexture(nil, "OVERLAY")
-    qStrip:SetSize(4, 79)
+    qStrip:SetSize(4, CARD_HEIGHT - 11)
     qStrip:SetPoint("TOPLEFT", 3, -3)
     qStrip:SetColorTexture(1, 1, 1, 1)
     card.qStrip = qStrip
@@ -1005,6 +1049,9 @@ local function CreateItemCard(parent)
 
     card.typeText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     card.typeText:SetPoint("TOPLEFT", 60, -22)
+    card.typeText:SetPoint("RIGHT", card, "RIGHT", -115, 0)
+    card.typeText:SetJustifyH("LEFT")
+    if card.typeText.SetWordWrap then card.typeText:SetWordWrap(false) end
     card.typeText:SetTextColor(0.6, 0.6, 0.6)
 
     card.baseStatsText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1245,10 +1292,93 @@ end
 local function GetVisibleCardCount()
     local h = resultScrollChild and resultScrollChild:GetHeight() or 0
     if h <= 0 and rightPanel then
-        h = (rightPanel:GetHeight() or 0) - 10
+        h = (rightPanel:GetHeight() or 0) - 36
     end
-    if h <= 0 then h = 440 end
+    if h <= 0 then h = 414 end
     return math.max(1, math.min(CARD_POOL_SIZE, math.floor((h - 5) / CARD_HEIGHT)))
+end
+
+local function UpdateSortBar()
+    if not sortBar then return end
+    local dirArrow = AGS.SortDescending and " v" or " ^"
+    for _, btn in ipairs(sortButtons) do
+        local isActive = (AGS.SortKey == btn.sortKey)
+        if btn.SetBackdropBorderColor then
+            if isActive then
+                btn:SetBackdropBorderColor(0.85, 0.75, 0.2, 1)
+            else
+                btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+            end
+        end
+        btn.text:SetText(btn.baseLabel .. (isActive and dirArrow or ""))
+        if isActive then
+            btn.text:SetTextColor(1, 0.85, 0.2)
+        else
+            btn.text:SetTextColor(0.8, 0.8, 0.8)
+        end
+    end
+
+    if sortActiveText then
+        local count = AGS.Results and #AGS.Results or 0
+        local sortName
+        if AGS.SortKey == "buyout" then sortName = "Price"
+        elseif AGS.SortKey == "pawn" then sortName = "Pawn %"
+        elseif AGS.SortKey == "name" then sortName = "Name"
+        else sortName = FormatStatLabel(AGS.SortKey or "")
+        end
+        sortActiveText:SetText(string.format("%d results  •  Sort: %s%s", count, sortName, dirArrow))
+    end
+end
+
+local function CreateSortBar(parent)
+    local bar = CreateFrame("Frame", nil, parent, BACKDROP_TEMPLATE)
+    bar:SetPoint("TOPLEFT", 5, -5)
+    bar:SetPoint("TOPRIGHT", -5, -5)
+    bar:SetHeight(24)
+    ApplyBackdrop(bar, EDITBOX_BACKDROP, 0.08, 0.08, 0.08, 0.95, 0.22, 0.22, 0.22, 1)
+
+    local lbl = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    lbl:SetPoint("LEFT", 8, 0)
+    lbl:SetText("Sort:")
+
+    local defs = {
+        { key = "buyout", label = "Price" },
+        { key = "name",   label = "Name" },
+    }
+    if AGS.HasPawn and AGS:HasPawn() then
+        table.insert(defs, 2, { key = "pawn", label = "Pawn %" })
+    end
+
+    sortButtons = {}
+    local x = 42
+    for _, def in ipairs(defs) do
+        local btn = CreateFrame("Button", nil, bar, BACKDROP_TEMPLATE)
+        btn:SetPoint("LEFT", x, 0)
+        btn:SetHeight(18)
+        ApplyBackdrop(btn, EDITBOX_BACKDROP, 0.14, 0.14, 0.14, 1, 0.3, 0.3, 0.3, 1)
+
+        local txt = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        txt:SetPoint("CENTER", 0, 0)
+        txt:SetText(def.label)
+        btn.text = txt
+        btn.baseLabel = def.label
+        btn.sortKey = def.key
+
+        local w = math.max(46, (txt:GetStringWidth() or 32) + 20)
+        btn:SetWidth(w)
+        btn:SetScript("OnClick", function()
+            if AGS.SetSort then AGS:SetSort(def.key) end
+        end)
+        table.insert(sortButtons, btn)
+        x = x + w + 5
+    end
+
+    sortActiveText = bar:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    sortActiveText:SetPoint("RIGHT", -8, 0)
+    sortActiveText:SetJustifyH("RIGHT")
+
+    sortBar = bar
+    UpdateSortBar()
 end
 
 local function RefreshVisibleCards()
@@ -1280,13 +1410,23 @@ end
 function UI:UpdateResults()
     if not isInitialized then return end
     for _, card in ipairs(cards) do card:Hide() end
+    UpdateSortBar()
 
     if not AGS.Results or #AGS.Results == 0 then
         if resultScrollFrame then
             FauxScrollFrame_Update(resultScrollFrame, 0, GetVisibleCardCount(), CARD_HEIGHT)
         end
+        if emptyText then
+            if AGS.IsScanning then
+                emptyText:Hide()
+            else
+                emptyText:SetText(hasSearched and "No matching gear found. Try broadening your filters." or "Select filters on the left and click Search AH.")
+                emptyText:Show()
+            end
+        end
         return
     end
+    if emptyText then emptyText:Hide() end
     RefreshVisibleCards()
 end
 
@@ -1355,7 +1495,7 @@ function UI:Initialize()
     leftPanel = CreateFrame("Frame", nil, mainFrame, BACKDROP_TEMPLATE)
     leftPanel:SetPoint("TOPLEFT", 0, 0)
     leftPanel:SetPoint("BOTTOMLEFT", 0, 0)
-    leftPanel:SetWidth(240)
+    leftPanel:SetWidth(260)
     ApplyBackdrop(leftPanel, PANEL_BACKDROP, 0.04, 0.04, 0.04, 0.95, 0.2, 0.2, 0.2, 1)
 
     rightPanel = CreateFrame("Frame", nil, mainFrame, BACKDROP_TEMPLATE)
@@ -1369,7 +1509,7 @@ function UI:Initialize()
     StripScrollbar(lpScroll)
 
     lpScrollChild = CreateFrame("Frame", nil, lpScroll)
-    lpScrollChild:SetSize(210, 900)
+    lpScrollChild:SetSize(230, 900)
     lpScroll:SetScrollChild(lpScrollChild)
 
     CreateTypeFilters(lpScrollChild)
@@ -1382,16 +1522,17 @@ function UI:Initialize()
     UpdateContextualFilters()
 
     btnSearch = CreateFrame("Button", nil, leftPanel, "UIPanelButtonTemplate")
-    btnSearch:SetSize(100, 25)
+    btnSearch:SetSize(112, 25)
     btnSearch:SetPoint("BOTTOMLEFT", 10, 10)
     btnSearch:SetText("Search AH")
     btnSearch:SetScript("OnClick", function()
+        hasSearched = true
         SyncFiltersFromUI()
         if AGS.StartSearch then AGS:StartSearch() end
     end)
 
     btnClear = CreateFrame("Button", nil, leftPanel, "UIPanelButtonTemplate")
-    btnClear:SetSize(100, 25)
+    btnClear:SetSize(112, 25)
     btnClear:SetPoint("BOTTOMRIGHT", -10, 10)
     btnClear:SetText("Clear Filters")
     btnClear:SetScript("OnClick", ClearFilters)
@@ -1400,13 +1541,19 @@ function UI:Initialize()
     txtStatus:SetPoint("BOTTOMLEFT", mainFrame, "TOPLEFT", 5, 5)
     txtStatus:SetText("Ready.")
 
+    CreateSortBar(rightPanel)
+
     resultScrollChild = CreateFrame("Frame", nil, rightPanel)
-    resultScrollChild:SetPoint("TOPLEFT", 5, -5)
+    resultScrollChild:SetPoint("TOPLEFT", 5, -31)
     resultScrollChild:SetPoint("BOTTOMRIGHT", -25, 5)
     if resultScrollChild.SetClipsChildren then
         resultScrollChild:SetClipsChildren(true)
     end
     rightPanel:SetScript("OnSizeChanged", RefreshVisibleCards)
+
+    emptyText = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    emptyText:SetPoint("CENTER", resultScrollChild, "CENTER", 0, 0)
+    emptyText:SetText("Select filters on the left and click Search AH.")
 
     resultScrollFrame = CreateFrame("ScrollFrame", "FGS_ResultScroll", resultScrollChild, "FauxScrollFrameTemplate")
     resultScrollFrame:SetPoint("TOPLEFT", 0, 0)
