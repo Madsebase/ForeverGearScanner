@@ -139,11 +139,19 @@ end
 
 local function StripScrollbar(scrollFrame)
     local name = scrollFrame:GetName()
-    if not name then return end
-    local up = _G[name.."ScrollBarScrollUpButton"]
-    local down = _G[name.."ScrollBarScrollDownButton"]
-    if up then up:Hide() end
-    if down then down:Hide() end
+    local sb = scrollFrame.ScrollBar or (name and _G[name.."ScrollBar"])
+    if sb then
+        if sb.ScrollUpButton then sb.ScrollUpButton:Hide() end
+        if sb.ScrollDownButton then sb.ScrollDownButton:Hide() end
+        if sb.Back then sb.Back:Hide() end
+        if sb.Forward then sb.Forward:Hide() end
+    end
+    if name then
+        local up = _G[name.."ScrollBarScrollUpButton"]
+        local down = _G[name.."ScrollBarScrollDownButton"]
+        if up then up:Hide() end
+        if down then down:Hide() end
+    end
 end
 
 local function GetQualityRGB(quality)
@@ -216,8 +224,8 @@ local function CreateAutoCompletePopup()
     f:Hide()
 
     local sc = CreateFrame("ScrollFrame", "FGS_ACScroll", f, "UIPanelScrollFrameTemplate")
-    sc:SetPoint("TOPLEFT", 4, -4)
-    sc:SetPoint("BOTTOMRIGHT", -20, 4)
+    sc:SetPoint("TOPLEFT", 6, -8)
+    sc:SetPoint("BOTTOMRIGHT", -26, 8)
     if sc.EnableMouseWheel then sc:EnableMouseWheel(true) end
     StripScrollbar(sc)
 
@@ -256,8 +264,8 @@ local function ShowAutoComplete(targetEditBox)
     pop.currentFocusEditBox = targetEditBox
     pop:ClearAllPoints()
     pop:SetPoint("TOPLEFT", targetEditBox, "BOTTOMLEFT", 0, -2)
-    pop:SetWidth(math.max(175, targetEditBox:GetWidth()))
-    pop.sChild:SetWidth(pop:GetWidth() - 25)
+    pop:SetWidth(math.max(190, targetEditBox:GetWidth()))
+    pop.sChild:SetWidth(pop:GetWidth() - 34)
     if pop.sc and pop.sc.SetVerticalScroll then
         pop.sc:SetVerticalScroll(0)
     end
@@ -302,7 +310,8 @@ local function ShowAutoComplete(targetEditBox)
     end
 
     pop.sChild:SetHeight(math.abs(yOff))
-    pop:SetHeight(math.min(180, math.abs(yOff) + 10))
+    local visibleRows = math.min(10, #matches)
+    pop:SetHeight(visibleRows * 18 + 16)
     pop:Show()
 end
 
@@ -1049,7 +1058,7 @@ local function CreateItemCard(parent)
 
     card.typeText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     card.typeText:SetPoint("TOPLEFT", 60, -22)
-    card.typeText:SetPoint("RIGHT", card, "RIGHT", -115, 0)
+    card.typeText:SetPoint("RIGHT", card, "RIGHT", -82, 0)
     card.typeText:SetJustifyH("LEFT")
     if card.typeText.SetWordWrap then card.typeText:SetWordWrap(false) end
     card.typeText:SetTextColor(0.6, 0.6, 0.6)
@@ -1278,6 +1287,8 @@ local function PopulateCard(card, item)
 
     card.priceText:SetText(FormatMoney(item.buyoutPrice))
     card.qtyText:SetText((item.totalQuantity or 1) .. " available")
+    local rightColW = math.max(card.priceText:GetStringWidth() or 0, card.qtyText:GetStringWidth() or 0) + 20
+    card.typeText:SetPoint("RIGHT", card, "RIGHT", -math.max(78, rightColW), 0)
 
     card.buyBtn:SetText(item.readyAuctionID and "|cFF00FF00Confirm Buy|r" or "Buyout")
     card.buyBtn:SetScript("OnClick", function()
