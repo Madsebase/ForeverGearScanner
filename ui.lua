@@ -151,10 +151,6 @@ local function GetQualityRGB(quality)
         local r, g, b = C_Item.GetItemQualityColor(quality or 1)
         if r then return r, g, b end
     end
-    if GetItemQualityColor then
-        local r, g, b = GetItemQualityColor(quality or 1)
-        if r then return r, g, b end
-    end
     return 1, 1, 1
 end
 
@@ -164,8 +160,6 @@ local function FormatExistingItemLabel(existing)
     local name, link
     if C_Item and C_Item.GetItemInfo then
         name, link = C_Item.GetItemInfo(existing)
-    elseif GetItemInfo then
-        name, link = GetItemInfo(existing)
     end
     if link then return link end
     if name then return name end
@@ -231,6 +225,11 @@ local function CreateAutoCompletePopup()
     f.sc = sc
     f.buttons = {}
     f.sChild = sChild
+    f:SetScript("OnUpdate", function(self)
+        if self.currentFocusEditBox and not self.currentFocusEditBox:HasFocus() and not self:IsMouseOver() then
+            self:Hide()
+        end
+    end)
     autoCompleteFrame = f
     return f
 end
@@ -302,17 +301,20 @@ local function ShowAutoComplete(targetEditBox)
     pop.sChild:SetHeight(math.abs(yOff))
     pop:SetHeight(math.min(180, math.abs(yOff) + 10))
     pop:Show()
-
-    pop:SetScript("OnUpdate", function(self)
-        if self.currentFocusEditBox and not self.currentFocusEditBox:HasFocus() and not self:IsMouseOver() then
-            self:Hide()
-        end
-    end)
 end
 
 ---------------------------------------------------------------------------
 -- EditBox Factory & Tab Navigation
 ---------------------------------------------------------------------------
+local function UnregisterEditBoxTabNav(edit)
+    for i = #allEditBoxes, 1, -1 do
+        if allEditBoxes[i] == edit then
+            table.remove(allEditBoxes, i)
+            break
+        end
+    end
+end
+
 local function RegisterEditBoxTabNav(edit)
     table.insert(allEditBoxes, edit)
     edit:SetScript("OnTabPressed", function(self)
@@ -454,6 +456,7 @@ local function UpdateContextualFilters()
     if not showWeapon then
         editWeaponMin:SetText(""); editWeaponMax:SetText("")
         editDpsMin:SetText(""); editDpsMax:SetText("")
+        editSpeedMin:SetText(""); editSpeedMax:SetText("")
     end
     if not showArmor then
         editArmorMin:SetText(""); editArmorMax:SetText("")
@@ -799,6 +802,9 @@ local function AddStatFilterRow(statText, minVal, maxVal)
     btnRemove:SetText("X")
     btnRemove:SetScript("OnClick", function()
         row:Hide()
+        UnregisterEditBoxTabNav(editStat)
+        UnregisterEditBoxTabNav(editMin)
+        UnregisterEditBoxTabNav(editMax)
         for i, r in ipairs(statFilterRows) do
             if r == row then table.remove(statFilterRows, i); break end
         end
@@ -867,7 +873,12 @@ local function ClearFilters()
     if ddPawnSpec then UIDropDownMenu_SetText(ddPawnSpec, "Any (Best)") end
     if AGS.SetPawnScale then AGS:SetPawnScale(nil) end
 
-    for _, row in ipairs(statFilterRows) do row:Hide() end
+    for _, row in ipairs(statFilterRows) do
+        row:Hide()
+        UnregisterEditBoxTabNav(row.editStat)
+        UnregisterEditBoxTabNav(row.editMin)
+        UnregisterEditBoxTabNav(row.editMax)
+    end
     statFilterRows = {}
     LayoutStatFilters()
     UpdateContextualFilters()
@@ -954,7 +965,7 @@ local function CreateItemCard(parent)
     end)
     iconBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     iconBtn:SetScript("OnClick", function()
-        if card.itemLink and IsModifiedClick() then
+        if card.itemLink and string.find(card.itemLink, "|H", 1, true) and IsModifiedClick() then
             HandleModifiedItemClick(card.itemLink)
         end
     end)
@@ -1287,21 +1298,20 @@ end
 -- Tab Creation (Supports Retail/Forever AuctionHouseFrame & LibAHTab)
 ---------------------------------------------------------------------------
 local function AttachToAuctionHouse()
-    local parentFrame = AuctionHouseFrame or AuctionFrame
-    if not parentFrame then return nil end
+    if not AuctionHouseFrame then return nil end
 
-    mainFrame = CreateFrame("Frame", "FGS_MainFrame", parentFrame, BACKDROP_TEMPLATE)
-    mainFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 15, -70)
-    mainFrame:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -15, 35)
-    mainFrame:SetFrameLevel(parentFrame:GetFrameLevel() + 10)
+    mainFrame = CreateFrame("Frame", "FGS_MainFrame", AuctionHouseFrame, BACKDROP_TEMPLATE)
+    mainFrame:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPLEFT", 15, -70)
+    mainFrame:SetPoint("BOTTOMRIGHT", AuctionHouseFrame, "BOTTOMRIGHT", -15, 35)
+    mainFrame:SetFrameLevel(AuctionHouseFrame:GetFrameLevel() + 10)
     mainFrame:Hide()
 
     local LibAHTab = LibStub and LibStub("LibAHTab-1-0", true)
-    if LibAHTab and AuctionHouseFrame then
+    if LibAHTab then
         if not LibAHTab:DoesIDExist("ForeverGearScanner") then
             LibAHTab:CreateTab("ForeverGearScanner", mainFrame, "Gear Scanner", "Forever Gear Scanner")
         end
-    elseif AuctionHouseFrame and AuctionHouseFrame.Tabs then
+    elseif AuctionHouseFrame.Tabs then
         local numTabs = #AuctionHouseFrame.Tabs + 1
         local tab = CreateFrame("Button", "AuctionHouseFrameTab"..numTabs, AuctionHouseFrame, "AuctionHouseFrameDisplayModeTabTemplate")
         tab:SetID(numTabs)
@@ -1310,15 +1320,18 @@ local function AttachToAuctionHouse()
         PanelTemplates_TabResize(tab, 20, nil, 70)
         PanelTemplates_DeselectTab(tab)
 
-        hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function(_, mode)
-            if mode and #mode > 0 then
+        local selectingOurTab = false
+        hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function()
+            if not selectingOurTab then
                 mainFrame:Hide()
                 PanelTemplates_DeselectTab(tab)
             end
         end)
 
         tab:SetScript("OnClick", function()
+            selectingOurTab = true
             AuctionHouseFrame:SetDisplayMode({})
+            selectingOurTab = false
             for _, t in ipairs(AuctionHouseFrame.Tabs) do
                 PanelTemplates_DeselectTab(t)
             end
@@ -1335,7 +1348,7 @@ end
 ---------------------------------------------------------------------------
 function UI:Initialize()
     if isInitialized then return end
-    if not AuctionHouseFrame and not AuctionFrame then return end
+    if not AuctionHouseFrame then return end
 
     if not AttachToAuctionHouse() then return end
 
@@ -1404,7 +1417,7 @@ function UI:Initialize()
 
     local cardWidth = math.max(400, rightPanel:GetWidth() - 35)
     for i = 1, CARD_POOL_SIZE do
-        local card = CreateItemCard(resultScrollChild, i)
+        local card = CreateItemCard(resultScrollChild)
         card:SetWidth(cardWidth)
         card:SetHeight(CARD_HEIGHT - 5)
         card:Hide()
