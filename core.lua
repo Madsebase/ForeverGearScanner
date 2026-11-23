@@ -326,69 +326,85 @@ local function ParseLine(leftText, rightText, parsed)
     rightText = CleanString(rightText)
 
     if leftText ~= "" then
-        table.insert(parsed.allLines, leftText)
+        local lowerLeft = string.lower(leftText)
+        local isSetBonus = string.match(lowerLeft, "^%(%d+%)%s*set:") ~= nil
+            or string.match(lowerLeft, "^set:") ~= nil
 
-        local ilvlMatch = string.match(leftText, "^Item Level (%d+)$")
-        if ilvlMatch then parsed.ilvl = tonumber(ilvlMatch) end
+        if not isSetBonus then
+            table.insert(parsed.allLines, leftText)
 
-        local reqMatch = string.match(leftText, "^Requires Level (%d+)$")
-        if reqMatch then parsed.reqLevel = tonumber(reqMatch) end
+            local ilvlMatch = string.match(leftText, "^Item Level (%d+)$")
+            if ilvlMatch then parsed.ilvl = tonumber(ilvlMatch) end
 
-        local armor = string.match(leftText, "^([%d,]+) Armor$")
-        if armor then
-            parsed.armor = ToNumber(armor)
-        end
+            local reqMatch = string.match(leftText, "^Requires Level (%d+)$")
+            if reqMatch then parsed.reqLevel = tonumber(reqMatch) end
 
-        local block = string.match(leftText, "^([%d,]+) Block$")
-        if block then
-            parsed.block = ToNumber(block)
-        end
-
-        local minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)%s+.-Damage")
-        if not minDmg then
-            minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)")
-        end
-        if minDmg and maxDmg and string.find(leftText, "Damage") then
-            parsed.dmgMin = ToNumber(minDmg)
-            parsed.dmgMax = ToNumber(maxDmg)
-        end
-
-        local dps = string.match(leftText, "%((%d+[%.%,]?%d*) damage per second%)")
-        if dps then
-            dps = string.gsub(dps, ",", ".")
-            parsed.dps = tonumber(dps) or 0
-        end
-
-        -- Try verbose Forever/Classic Equip rules before generic +X Stat
-        local consumedEquipStat = false
-        for _, rule in ipairs(EQUIP_STAT_RULES) do
-            local a, b = string.match(leftText, rule.pattern)
-            if a then
-                rule.fn(parsed.stats, a, b)
-                consumedEquipStat = true
-                break
+            local armor = string.match(leftText, "^([%d,]+) Armor$")
+            if armor then
+                parsed.armor = ToNumber(armor)
             end
-        end
 
-        if not consumedEquipStat then
-            local stripped = string.gsub(leftText, "^Equip:%s*", "")
-            local statValue, statName = string.match(stripped, "^%+([%d,%.]+)%%?%s+(.+)$")
-            if not statValue then
-                -- Handle reversed suffix form e.g. "Stamina +5"
-                statName, statValue = string.match(stripped, "^([%a%s]+)%s+%+([%d,%.]+)%%?$")
+            local block = string.match(leftText, "^([%d,]+) Block$")
+            if block then
+                parsed.block = ToNumber(block)
             end
-            if statValue and statName then
-                local canonical = CanonicalizeStatName(statName)
-                AddStat(parsed.stats, canonical, ToNumber(string.gsub(statValue, "%.+$", "")))
-                if string.match(leftText, "^Equip:") then
-                    consumedEquipStat = true
+
+            local minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)%s+.-Damage")
+            if not minDmg then
+                minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)")
+            end
+            if minDmg and maxDmg and string.find(leftText, "Damage") then
+                parsed.dmgMin = ToNumber(minDmg)
+                parsed.dmgMax = ToNumber(maxDmg)
+            end
+
+            local dps = string.match(leftText, "%((%d+[%.%,]?%d*) damage per second%)")
+            if dps then
+                dps = string.gsub(dps, ",", ".")
+                parsed.dps = tonumber(dps) or 0
+            end
+
+            local isUseLine = string.match(lowerLeft, "^use:") ~= nil
+            local isProcLine = string.find(lowerLeft, "chance on ", 1, true) ~= nil
+                or string.find(lowerLeft, "have a chance", 1, true) ~= nil
+                or string.find(lowerLeft, "has a [%d%% ]*chance") ~= nil
+                or string.find(lowerLeft, "chance to increase", 1, true) ~= nil
+                or string.find(lowerLeft, "chance to restore", 1, true) ~= nil
+                or string.find(lowerLeft, "for %d+ sec") ~= nil
+
+            -- Try verbose Forever/Classic Equip rules before generic +X Stat (skip Use:/proc/set bonuses)
+            local consumedEquipStat = false
+            if not isUseLine and not isProcLine then
+                for _, rule in ipairs(EQUIP_STAT_RULES) do
+                    local a, b = string.match(leftText, rule.pattern)
+                    if a then
+                        rule.fn(parsed.stats, a, b)
+                        consumedEquipStat = true
+                        break
+                    end
+                end
+
+                if not consumedEquipStat then
+                    local stripped = string.gsub(leftText, "^Equip:%s*", "")
+                    local statValue, statName = string.match(stripped, "^%+([%d,%.]+)%%?%s+(.+)$")
+                    if not statValue then
+                        -- Handle reversed suffix form e.g. "Stamina +5"
+                        statName, statValue = string.match(stripped, "^([%a%s]+)%s+%+([%d,%.]+)%%?$")
+                    end
+                    if statValue and statName then
+                        local canonical = CanonicalizeStatName(statName)
+                        AddStat(parsed.stats, canonical, ToNumber(string.gsub(statValue, "%.+$", "")))
+                        if string.match(leftText, "^Equip:") then
+                            consumedEquipStat = true
+                        end
+                    end
                 end
             end
-        end
 
-        -- Only show non-stat procs/uses in green effects pills so cards stay clean
-        if not consumedEquipStat and (string.match(leftText, "^Equip:") or string.match(leftText, "^Use:") or string.match(leftText, "^Chance on [Hh]it")) then
-            table.insert(parsed.effects, leftText)
+            -- Only show non-stat procs/uses in green effects pills so cards stay clean
+            if not consumedEquipStat and (string.match(leftText, "^Equip:") or string.match(leftText, "^Use:") or string.match(leftText, "^Chance on [Hh]it")) then
+                table.insert(parsed.effects, leftText)
+            end
         end
     end
 

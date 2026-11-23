@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.1
+
+- **Tooltip set-bonus & proc fix:** Ignored `(N) Set:` and active `Set:` lines during item parsing so set bonuses (e.g. *Bindings of Elements* `(3) Set:` / `(6) Set:`) are no longer added onto an individual item's stats or pills. Excluded `Use:` and temporary proc descriptions from passive stat totals while keeping passive Classic `%` (`Crit`, `Hit`, `Dodge`, `Parry`, `Block`) stats intact.
+
 ## v1.1.0
 
 - **Sort bar & result summary:** Added a top Sort bar (`Price`, `Pawn %`, `Name`) with live sort direction and result count, plus clear empty-state prompts before scanning or when no matches are found.
