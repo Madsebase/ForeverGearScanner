@@ -1,12 +1,13 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Forever Gear Scanner" width="160" />
+  <img src="assets/logo.png" alt="Forever Gear Scanner" width="160" /><br/>
+  <img src="assets/badge_1k_downloads.png" alt="1,000+ Downloads on CurseForge" width="460" />
 </p>
 
 # Forever Gear Scanner
 
-The default Auction House in **World of Warcraft: Forever** (`Interface: 16001`) only lets you browse by item name and price. If you want an upgrade with Spell Power, MP5, Hit, or a specific weapon speed, you end up hovering over dozens of listings one tooltip at a time.
+The default Auction House in **World of Warcraft: Forever** (`Interface: 16001`) only lets you browse by item name and price. If you want an upgrade with Spell Power, MP5, Hit, or a specific 1H sword for your off-hand, you end up hovering over dozens of listings one tooltip at a time.
 
-**Forever Gear Scanner** adds a **Gear Scanner** tab to the Auction House and replaces tooltip hunting with scannable gear cards. Filter across 40 stats with min and max values, cap your Gold / Silver / Copper budget before scanning, spot unusable items at a glance, and see **Pawn** upgrade percentages right on the results.
+**Forever Gear Scanner** adds a **Gear Scanner** tab to the Auction House and replaces tooltip hunting with scannable gear cards. Filter across 40 stats with min and max values, narrow gear cleanly with cascading **Cat -> Sub -> Slot** dropdowns, cap your Gold / Silver / Copper budget before scanning, spot unusable items at a glance, and see **Pawn** upgrade percentages right on the results.
 
 ## Feature Video
 
