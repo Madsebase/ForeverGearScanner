@@ -518,7 +518,7 @@ local function CreateTypeFilters(parent)
     -- Rarity
     CreateLabel(c, L.LBL_RARITY or "Rarity:", 5, -4)
     ddQuality = CreateFrame("Frame", "FGS_DDQuality", c, "UIDropDownMenuTemplate")
-    ddQuality:SetPoint("TOPLEFT", 48, -1)
+    ddQuality:SetPoint("TOPLEFT", 58, -1)
     UIDropDownMenu_SetWidth(ddQuality, 124)
     UIDropDownMenu_Initialize(ddQuality, function()
         local anyText = L.OPT_ANY or "Any"
@@ -552,7 +552,7 @@ local function CreateTypeFilters(parent)
     -- Category (Weapon / Armor only)
     CreateLabel(c, L.LBL_CAT or "Cat:", 5, -29)
     ddCategory = CreateFrame("Frame", "FGS_DDCategory", c, "UIDropDownMenuTemplate")
-    ddCategory:SetPoint("TOPLEFT", 48, -26)
+    ddCategory:SetPoint("TOPLEFT", 58, -26)
     UIDropDownMenu_SetWidth(ddCategory, 124)
     UIDropDownMenu_Initialize(ddCategory, function()
         local anyEquip = L.OPT_ANY_EQUIP or "Any Equipment"
@@ -598,7 +598,7 @@ local function CreateTypeFilters(parent)
     -- Subcategory
     CreateLabel(c, L.LBL_SUB or "Sub:", 5, -54)
     ddSubtype = CreateFrame("Frame", "FGS_DDSubtype", c, "UIDropDownMenuTemplate")
-    ddSubtype:SetPoint("TOPLEFT", 48, -51)
+    ddSubtype:SetPoint("TOPLEFT", 58, -51)
     UIDropDownMenu_SetWidth(ddSubtype, 124)
     UIDropDownMenu_Initialize(ddSubtype, function()
         local anyText = L.OPT_ANY or "Any"
@@ -639,7 +639,7 @@ local function CreateTypeFilters(parent)
     -- Slot
     CreateLabel(c, L.LBL_SLOT or "Slot:", 5, -79)
     ddSlot = CreateFrame("Frame", "FGS_DDSlot", c, "UIDropDownMenuTemplate")
-    ddSlot:SetPoint("TOPLEFT", 48, -76)
+    ddSlot:SetPoint("TOPLEFT", 58, -76)
     UIDropDownMenu_SetWidth(ddSlot, 124)
     UIDropDownMenu_Initialize(ddSlot, function()
         local anyText = L.OPT_ANY or "Any"
@@ -675,28 +675,28 @@ local function CreateWeaponFilters(parent)
     sec.id = "WEAPON"
     local phMin, phMax = L.PH_MIN or "Min", L.PH_MAX or "Max"
     CreateLabel(c, L.LBL_DAMAGE or "Damage:", 5, -4)
-    editWeaponMin = CreateCleanEditBox(c, 40, 20, phMin); editWeaponMin:GetParent():SetPoint("TOPLEFT", 70, -1)
-    CreateLabel(c, "–", 114, -4)
-    editWeaponMax = CreateCleanEditBox(c, 40, 20, phMax); editWeaponMax:GetParent():SetPoint("TOPLEFT", 124, -1)
+    editWeaponMin = CreateCleanEditBox(c, 40, 20, phMin); editWeaponMin:GetParent():SetPoint("TOPLEFT", 76, -1)
+    CreateLabel(c, "–", 120, -4)
+    editWeaponMax = CreateCleanEditBox(c, 40, 20, phMax); editWeaponMax:GetParent():SetPoint("TOPLEFT", 130, -1)
 
     CreateLabel(c, L.LBL_DPS or "DPS:", 5, -30)
-    editDpsMin = CreateCleanEditBox(c, 40, 20, phMin); editDpsMin:GetParent():SetPoint("TOPLEFT", 70, -27)
-    CreateLabel(c, "–", 114, -30)
-    editDpsMax = CreateCleanEditBox(c, 40, 20, phMax); editDpsMax:GetParent():SetPoint("TOPLEFT", 124, -27)
+    editDpsMin = CreateCleanEditBox(c, 40, 20, phMin); editDpsMin:GetParent():SetPoint("TOPLEFT", 76, -27)
+    CreateLabel(c, "–", 120, -30)
+    editDpsMax = CreateCleanEditBox(c, 40, 20, phMax); editDpsMax:GetParent():SetPoint("TOPLEFT", 130, -27)
 
     CreateLabel(c, L.LBL_SPEED or "Speed:", 5, -56)
-    editSpeedMin = CreateCleanEditBox(c, 40, 20, phMin); editSpeedMin:GetParent():SetPoint("TOPLEFT", 70, -53)
-    CreateLabel(c, "–", 114, -56)
-    editSpeedMax = CreateCleanEditBox(c, 40, 20, phMax); editSpeedMax:GetParent():SetPoint("TOPLEFT", 124, -53)
+    editSpeedMin = CreateCleanEditBox(c, 40, 20, phMin); editSpeedMin:GetParent():SetPoint("TOPLEFT", 76, -53)
+    CreateLabel(c, "–", 120, -56)
+    editSpeedMax = CreateCleanEditBox(c, 40, 20, phMax); editSpeedMax:GetParent():SetPoint("TOPLEFT", 130, -53)
 end
 
 local function CreateArmorFilters(parent)
     local c, sec = CreateCollapsibleSection(parent, L.SEC_ARMOR or "Armour Filters", 28, true)
     sec.id = "ARMOR"
     CreateLabel(c, L.LBL_ARMOR or "Armour:", 5, -4)
-    editArmorMin = CreateCleanEditBox(c, 40, 20, L.PH_MIN or "Min"); editArmorMin:GetParent():SetPoint("TOPLEFT", 70, -1)
-    CreateLabel(c, "–", 114, -4)
-    editArmorMax = CreateCleanEditBox(c, 40, 20, L.PH_MAX or "Max"); editArmorMax:GetParent():SetPoint("TOPLEFT", 124, -1)
+    editArmorMin = CreateCleanEditBox(c, 40, 20, L.PH_MIN or "Min"); editArmorMin:GetParent():SetPoint("TOPLEFT", 76, -1)
+    CreateLabel(c, "–", 120, -4)
+    editArmorMax = CreateCleanEditBox(c, 40, 20, L.PH_MAX or "Max"); editArmorMax:GetParent():SetPoint("TOPLEFT", 130, -1)
 end
 
 local function CreateCoinEditBox(parent, x, y, width, maxLetters, atlasName, fallbackTex)
@@ -720,14 +720,14 @@ local function CreateRequirements(parent)
     local hasPawn = AGS.HasPawn and AGS:HasPawn()
     local c = CreateCollapsibleSection(parent, L.SEC_REQ or "Level & Price", hasPawn and 118 or 74)
     CreateLabel(c, L.LBL_REQ_LEVEL or "Req Level:", 5, -4)
-    editReqLevelMin = CreateCleanEditBox(c, 40, 20, L.PH_MIN or "Min"); editReqLevelMin:GetParent():SetPoint("TOPLEFT", 70, -1)
-    CreateLabel(c, "–", 114, -4)
-    editReqLevelMax = CreateCleanEditBox(c, 40, 20, L.PH_MAX or "Max"); editReqLevelMax:GetParent():SetPoint("TOPLEFT", 124, -1)
+    editReqLevelMin = CreateCleanEditBox(c, 40, 20, L.PH_MIN or "Min"); editReqLevelMin:GetParent():SetPoint("TOPLEFT", 76, -1)
+    CreateLabel(c, "–", 120, -4)
+    editReqLevelMax = CreateCleanEditBox(c, 40, 20, L.PH_MAX or "Max"); editReqLevelMax:GetParent():SetPoint("TOPLEFT", 130, -1)
 
     CreateLabel(c, L.LBL_MAX_PRICE or "Max price:", 5, -30)
-    editBuyoutGold   = CreateCoinEditBox(c, 68,  -27, 48, 6, "auctionhouse-icon-coin-gold",   "Interface\\MoneyFrame\\UI-GoldIcon")
-    editBuyoutSilver = CreateCoinEditBox(c, 119, -27, 38, 2, "auctionhouse-icon-coin-silver", "Interface\\MoneyFrame\\UI-SilverIcon")
-    editBuyoutCopper = CreateCoinEditBox(c, 160, -27, 38, 2, "auctionhouse-icon-coin-copper", "Interface\\MoneyFrame\\UI-CopperIcon")
+    editBuyoutGold   = CreateCoinEditBox(c, 76,  -27, 48, 6, "auctionhouse-icon-coin-gold",   "Interface\\MoneyFrame\\UI-GoldIcon")
+    editBuyoutSilver = CreateCoinEditBox(c, 127, -27, 38, 2, "auctionhouse-icon-coin-silver", "Interface\\MoneyFrame\\UI-SilverIcon")
+    editBuyoutCopper = CreateCoinEditBox(c, 168, -27, 38, 2, "auctionhouse-icon-coin-copper", "Interface\\MoneyFrame\\UI-CopperIcon")
 
     checkUsableOnly = CreateFrame("CheckButton", "FGS_CheckUsable", c, "UICheckButtonTemplate")
     checkUsableOnly:SetPoint("TOPLEFT", 0, -50)
@@ -752,8 +752,8 @@ local function CreateRequirements(parent)
 
         CreateLabel(c, L.LBL_SPEC or "Spec:", 5, -98)
         ddPawnSpec = CreateFrame("Frame", "FGS_DDPawnSpec", c, "UIDropDownMenuTemplate")
-        ddPawnSpec:SetPoint("TOPLEFT", 38, -94)
-        UIDropDownMenu_SetWidth(ddPawnSpec, 134)
+        ddPawnSpec:SetPoint("TOPLEFT", 48, -94)
+        UIDropDownMenu_SetWidth(ddPawnSpec, 128)
         UIDropDownMenu_Initialize(ddPawnSpec, function()
             local anyBest = L.OPT_ANY_BEST or "Any (Best)"
             local info = UIDropDownMenu_CreateInfo()
@@ -876,7 +876,7 @@ local function CreateStatFilters(parent)
     local c = CreateCollapsibleSection(parent, L.SEC_STATS or "Stat Filters", 60)
 
     local btnAdd = CreateFrame("Button", nil, c, "UIPanelButtonTemplate")
-    btnAdd:SetSize(145, 22)
+    btnAdd:SetSize(156, 22)
     btnAdd:SetPoint("TOPLEFT", 5, -5)
     btnAdd:SetText(L.BTN_ADD_STAT or "+ Add Stat Filter")
     btnAdd:SetScript("OnClick", function() AddStatFilterRow() end)
@@ -890,6 +890,8 @@ end
 ---------------------------------------------------------------------------
 -- Clear / Sync
 ---------------------------------------------------------------------------
+local SyncFiltersFromUI
+
 local function ClearFilters()
     currentQuality = 0; UIDropDownMenu_SetText(ddQuality, L.OPT_ANY or "Any")
     currentClassID = nil; UIDropDownMenu_SetText(ddCategory, L.OPT_ANY_EQUIP or "Any Equipment")
@@ -919,9 +921,10 @@ local function ClearFilters()
     statFilterRows = {}
     LayoutStatFilters()
     UpdateContextualFilters()
+    if SyncFiltersFromUI then SyncFiltersFromUI() end
 end
 
-local function SyncFiltersFromUI()
+SyncFiltersFromUI = function()
     local function getVal(edit, allowDecimal)
         local t = edit:GetText()
         if not t or t == "" then return 0 end
@@ -1084,6 +1087,7 @@ local function GetOrCreatePill(container, index)
 
     local text = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     text:SetPoint("CENTER", 0, 0)
+    if text.SetWordWrap then text:SetWordWrap(false) end
     btn.text = text
 
     container.pills[index] = btn
@@ -1093,10 +1097,21 @@ end
 local function AddCardPill(container, state, label, sortKey, filterLabel, tr, tg, tb)
     local pill = GetOrCreatePill(container, state.pIdx)
     pill:Show()
+    pill.text:ClearAllPoints()
+    pill.text:SetPoint("CENTER", 0, 0)
+    pill.text:SetWidth(0)
+    pill.text:SetJustifyH("CENTER")
     pill.text:SetText(label)
     pill.text:SetTextColor(tr or 1, tg or 1, tb or 1)
-    local pw = math.min(pill.text:GetStringWidth() + 10, state.maxW)
+    local rawW = pill.text:GetStringWidth() or 20
+    local pw = math.min(rawW + 10, state.maxW)
     pill:SetSize(pw, 16)
+    if rawW + 10 > state.maxW then
+        pill.text:ClearAllPoints()
+        pill.text:SetPoint("LEFT", 5, 0)
+        pill.text:SetPoint("RIGHT", -5, 0)
+        pill.text:SetJustifyH("LEFT")
+    end
 
     if pill.SetBackdropBorderColor then
         if sortKey and AGS.SortKey == sortKey then
@@ -1126,8 +1141,17 @@ local function AddCardPill(container, state, label, sortKey, filterLabel, tr, tg
         pill:SetScript("OnLeave", function() GameTooltip:Hide() end)
     else
         pill:SetScript("OnClick", nil)
-        pill:SetScript("OnEnter", nil)
-        pill:SetScript("OnLeave", nil)
+        if rawW + 10 > state.maxW then
+            pill:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(label, 0.2, 1, 0.2, true)
+                GameTooltip:Show()
+            end)
+            pill:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        else
+            pill:SetScript("OnEnter", nil)
+            pill:SetScript("OnLeave", nil)
+        end
     end
 
     if not sortKey then
@@ -1507,7 +1531,7 @@ function UI:Initialize()
     leftPanel = CreateFrame("Frame", nil, mainFrame, BACKDROP_TEMPLATE)
     leftPanel:SetPoint("TOPLEFT", 0, 0)
     leftPanel:SetPoint("BOTTOMLEFT", 0, 0)
-    leftPanel:SetWidth(260)
+    leftPanel:SetWidth(276)
     ApplyBackdrop(leftPanel, PANEL_BACKDROP, 0.04, 0.04, 0.04, 0.95, 0.2, 0.2, 0.2, 1)
 
     rightPanel = CreateFrame("Frame", nil, mainFrame, BACKDROP_TEMPLATE)
@@ -1521,7 +1545,7 @@ function UI:Initialize()
     StripScrollbar(lpScroll)
 
     lpScrollChild = CreateFrame("Frame", nil, lpScroll)
-    lpScrollChild:SetSize(230, 900)
+    lpScrollChild:SetSize(246, 900)
     lpScroll:SetScrollChild(lpScrollChild)
 
     CreateTypeFilters(lpScrollChild)
@@ -1534,7 +1558,7 @@ function UI:Initialize()
     UpdateContextualFilters()
 
     btnSearch = CreateFrame("Button", nil, leftPanel, "UIPanelButtonTemplate")
-    btnSearch:SetSize(116, 25)
+    btnSearch:SetSize(124, 25)
     btnSearch:SetPoint("BOTTOMLEFT", 10, 10)
     btnSearch:SetText(L.BTN_SEARCH or "Search AH")
     btnSearch:SetScript("OnClick", function()
@@ -1544,7 +1568,7 @@ function UI:Initialize()
     end)
 
     btnClear = CreateFrame("Button", nil, leftPanel, "UIPanelButtonTemplate")
-    btnClear:SetSize(116, 25)
+    btnClear:SetSize(124, 25)
     btnClear:SetPoint("BOTTOMRIGHT", -10, 10)
     btnClear:SetText(L.BTN_CLEAR or "Clear Filters")
     btnClear:SetScript("OnClick", ClearFilters)

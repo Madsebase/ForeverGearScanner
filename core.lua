@@ -53,6 +53,9 @@ local SCAN_STATE_THROTTLED  = 3
 local scanState = {
     phase = SCAN_STATE_IDLE,
     pendingResults = {},
+    retryQueue = {},
+    retryPass = 0,
+    retryWaitUntil = 0,
     batchIndex = 0,
     batchPerFrame = 20, -- C_TooltipInfo is data-only and fast
     lastRequestTime = 0,
@@ -517,7 +520,6 @@ local function RebuildLocaleRules()
 end
 
 RebuildLocaleRules()
-AGS.RebuildLocaleRules = RebuildLocaleRules
 
 local function MatchesAny(text, patterns)
     for _, pat in ipairs(patterns) do
@@ -886,6 +888,8 @@ local function PassesFilter(item, ignoreUpgradesOnly)
             if itemSlot ~= "INVTYPE_CHEST" and itemSlot ~= "INVTYPE_ROBE" then return false end
         elseif fl.invTypeFilter == "INVTYPE_RANGED" then
             if itemSlot ~= "INVTYPE_RANGED" and itemSlot ~= "INVTYPE_RANGEDRIGHT" then return false end
+        elseif fl.invTypeFilter == "INVTYPE_WEAPON" then
+            if itemSlot ~= "INVTYPE_WEAPON" and itemSlot ~= "INVTYPE_WEAPONMAINHAND" and itemSlot ~= "INVTYPE_WEAPONOFFHAND" then return false end
         else
             if itemSlot ~= fl.invTypeFilter then return false end
         end
@@ -956,11 +960,12 @@ local function BuildBrowseItem(browseResult)
 
     local keyInfo = C_AuctionHouse.GetItemKeyInfo(itemKey)
     local itemName, itemLink, itemQuality, itemLevel, itemMinLevel = C_Item.GetItemInfo(itemKey.itemID)
+    local isCached = not C_Item.IsItemDataCachedByID or C_Item.IsItemDataCachedByID(itemKey.itemID)
 
     local parsed = ParseItemKeyTooltip(itemKey)
     local link = parsed.itemLink or itemLink
     local name = (keyInfo and keyInfo.itemName) or itemName
-    if not name then
+    if not name or not isCached then
         if C_Item.RequestLoadItemDataByID then
             C_Item.RequestLoadItemDataByID(itemKey.itemID)
         end
@@ -1089,6 +1094,16 @@ local function BuildClassFilters()
                 table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexRangedrightType })
             end
             return filters
+        elseif Enum.InventoryType.IndexWeaponType and invEnum == Enum.InventoryType.IndexWeaponType then
+            local weaponClass = fl.classID or Enum.ItemClass.Weapon
+            table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponType })
+            if Enum.InventoryType.IndexWeaponmainhandType then
+                table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponmainhandType })
+            end
+            if Enum.InventoryType.IndexWeaponoffhandType then
+                table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponoffhandType })
+            end
+            return filters
         end
     end
 
@@ -1145,6 +1160,9 @@ function AGS:StartSearch()
     self.RawResults = {}
     self.IsScanning = true
     scanState.pendingResults = {}
+    scanState.retryQueue = {}
+    scanState.retryPass = 0
+    scanState.retryWaitUntil = 0
     scanState.batchIndex = 0
     scanState.pendingBuyItem = nil
     scanState.lastQuery = nil
@@ -1247,6 +1265,11 @@ local function OnUpdate(self, elapsed)
     end
 
     if scanState.phase == SCAN_STATE_PROCESSING then
+        if scanState.retryWaitUntil > 0 and GetTime() < scanState.retryWaitUntil then
+            return
+        end
+        scanState.retryWaitUntil = 0
+
         local batch = scanState.pendingResults
         local startIdx = scanState.batchIndex
         local endIdx = math.min(startIdx + scanState.batchPerFrame - 1, #batch)
@@ -1254,10 +1277,8 @@ local function OnUpdate(self, elapsed)
         for i = startIdx, endIdx do
             local item = BuildBrowseItem(batch[i])
             if item == false then
-                -- Item info not cached yet; re-queue once
-                if not batch[i]._retried then
-                    batch[i]._retried = true
-                    table.insert(batch, batch[i])
+                if scanState.retryPass < 5 then
+                    table.insert(scanState.retryQueue, batch[i])
                 end
             elseif item and PassesFilter(item, true) then
                 table.insert(AGS.RawResults, item)
@@ -1270,7 +1291,18 @@ local function OnUpdate(self, elapsed)
         scanState.batchIndex = endIdx + 1
 
         if scanState.batchIndex > #batch then
+            if #scanState.retryQueue > 0 and scanState.retryPass < 5 then
+                scanState.pendingResults = scanState.retryQueue
+                scanState.retryQueue = {}
+                scanState.batchIndex = 1
+                scanState.retryPass = scanState.retryPass + 1
+                scanState.retryWaitUntil = GetTime() + 0.18
+                return
+            end
+
             scanState.pendingResults = {}
+            scanState.retryQueue = {}
+            scanState.retryPass = 0
             scanState.batchIndex = 0
 
             if not C_AuctionHouse.HasFullBrowseResults() then
@@ -1322,13 +1354,7 @@ local function QueueBrowseBatch(results)
 end
 
 f:SetScript("OnEvent", function(self, event, ...)
-    if event == "ADDON_LOADED" then
-        local name = ...
-        if name == addonName then
-            ForeverGearScannerDB = ForeverGearScannerDB or {}
-            ForeverGearScannerDB.presets = ForeverGearScannerDB.presets or {}
-        end
-    elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" then
+    if event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" then
         local interactionType = ...
         if Enum.PlayerInteractionType and interactionType == Enum.PlayerInteractionType.Auctioneer then
             if AGS.UI and AGS.UI.Initialize and not AGS.UI.initialized then
@@ -1343,6 +1369,9 @@ f:SetScript("OnEvent", function(self, event, ...)
         AGS.IsScanning = false
         scanState.phase = SCAN_STATE_IDLE
         scanState.pendingResults = {}
+        scanState.retryQueue = {}
+        scanState.retryPass = 0
+        scanState.retryWaitUntil = 0
         scanState.batchIndex = 0
         scanState.pendingQuery = nil
         scanState.pendingMore = false
@@ -1409,12 +1438,3 @@ f:SetScript("OnEvent", function(self, event, ...)
         end
     end
 end)
-
----------------------------------------------------------------------------
--- Slash commands
----------------------------------------------------------------------------
-SLASH_FGS1 = "/fgs"
-SLASH_FGS2 = "/gearscanner"
-SlashCmdList["FGS"] = function()
-    print("|cFFFFD700ForeverGearScanner|r: " .. (L.SLASH_HELP or "Open the Auction House and click the 'Gear Scanner' tab."))
-end

@@ -47,7 +47,7 @@ Full credit to **Vger** for Pawn. Forever Gear Scanner reads your Pawn scales di
 
 ## Quick Start
 
-1. Open any Auction House and click the **Gear Scanner** tab (or type `/fgs` or `/gearscanner`).
+1. Open any Auction House and click the **Gear Scanner** tab.
 2. Set **Rarity**, **Cat** (`Weapon` or `Armor`), **Sub**, and **Slot**, plus optional **Req Level**, **Max price**, **Usable Only**, or **Pawn Upgrades Only**.
 3. Click **+ Add Stat Filter** to pick stats and optional Min/Max thresholds.
 4. Click **Search AH**.

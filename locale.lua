@@ -132,7 +132,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "Click to sort by Pawn upgrade",
         TT_PILL_SORT = "Left-click: Sort by %s",
         TT_PILL_FILTER = "Right-click: Add filter for %s",
-        SLASH_HELP = "Open the Auction House and click the 'Gear Scanner' tab.",
         ITEM_PREFIX = "Item #%d",
         ARMOR_INLINE = "%d Armor",
         BLOCK_INLINE = "%d Block",
@@ -205,7 +204,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "Klicken: Nach Pawn-Upgrade sortieren",
         TT_PILL_SORT = "Linksklick: Nach %s sortieren",
         TT_PILL_FILTER = "Rechtsklick: Filter für %s hinzufügen",
-        SLASH_HELP = "Öffne das Auktionshaus und klicke auf den Reiter 'Gear Scanner'.",
         ITEM_PREFIX = "Gegenstand #%d",
         ARMOR_INLINE = "%d Rüstung",
         BLOCK_INLINE = "%d Blocken",
@@ -278,7 +276,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "Cliquer pour trier par score Pawn",
         TT_PILL_SORT = "Clic gauche : Trier par %s",
         TT_PILL_FILTER = "Clic droit : Ajouter un filtre %s",
-        SLASH_HELP = "Ouvrez l'Hôtel des ventes et cliquez sur l'onglet 'Gear Scanner'.",
         ITEM_PREFIX = "Objet #%d",
         ARMOR_INLINE = "%d Armure",
         BLOCK_INLINE = "%d Bloquer",
@@ -351,7 +348,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "Clic para ordenar por mejora Pawn",
         TT_PILL_SORT = "Clic izq.: Ordenar por %s",
         TT_PILL_FILTER = "Clic der.: Añadir filtro %s",
-        SLASH_HELP = "Abre la casa de subastas y pulsa la pestaña 'Gear Scanner'.",
         ITEM_PREFIX = "Objeto #%d",
         ARMOR_INLINE = "%d Armadura",
         BLOCK_INLINE = "%d Bloqueo",
@@ -424,7 +420,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "Clique para ordenar por Pawn",
         TT_PILL_SORT = "Clique esq.: Ordenar por %s",
         TT_PILL_FILTER = "Clique dir.: Filtrar %s",
-        SLASH_HELP = "Abra a Casa de Leilões e clique na aba 'Gear Scanner'.",
         ITEM_PREFIX = "Item #%d",
         ARMOR_INLINE = "%d Armadura",
         BLOCK_INLINE = "%d Bloqueio",
@@ -497,7 +492,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "Clicca per ordinare per Pawn",
         TT_PILL_SORT = "Clic sin.: Ordina per %s",
         TT_PILL_FILTER = "Clic des.: Aggiungi filtro %s",
-        SLASH_HELP = "Apri la Casa d'Aste e clicca sulla scheda 'Gear Scanner'.",
         ITEM_PREFIX = "Oggetto #%d",
         ARMOR_INLINE = "%d Armatura",
         BLOCK_INLINE = "%d Blocco",
@@ -570,7 +564,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "Нажмите для сортировки по Pawn",
         TT_PILL_SORT = "ЛКМ: Сортировать по %s",
         TT_PILL_FILTER = "ПКМ: Фильтр по %s",
-        SLASH_HELP = "Откройте аукцион и выберите вкладку 'Gear Scanner'.",
         ITEM_PREFIX = "Предмет #%d",
         ARMOR_INLINE = "%d Брони",
         BLOCK_INLINE = "%d Блока",
@@ -643,7 +636,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "클릭하여 Pawn 순으로 정렬",
         TT_PILL_SORT = "좌클릭: %s 기준 정렬",
         TT_PILL_FILTER = "우클릭: %s 필터 추가",
-        SLASH_HELP = "경매장을 열고 'Gear Scanner' 탭을 클릭하세요.",
         ITEM_PREFIX = "아이템 #%d",
         ARMOR_INLINE = "방어도 %d",
         BLOCK_INLINE = "피해 방어 %d",
@@ -716,7 +708,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "点击按 Pawn 提升排序",
         TT_PILL_SORT = "左键：按 %s 排序",
         TT_PILL_FILTER = "右键：添加 %s 过滤",
-        SLASH_HELP = "打开拍卖行并点击 'Gear Scanner' 标签页。",
         ITEM_PREFIX = "物品 #%d",
         ARMOR_INLINE = "%d 护甲",
         BLOCK_INLINE = "%d 格挡",
@@ -789,7 +780,6 @@ local UI_STRINGS = {
         TT_PAWN_SORT_HINT = "點擊依 Pawn 提升排序",
         TT_PILL_SORT = "左鍵：依 %s 排序",
         TT_PILL_FILTER = "右鍵：新增 %s 篩選",
-        SLASH_HELP = "開啟拍賣場並點擊 'Gear Scanner' 分頁。",
         ITEM_PREFIX = "物品 #%d",
         ARMOR_INLINE = "%d 護甲",
         BLOCK_INLINE = "%d 格擋",
@@ -1021,6 +1011,13 @@ end
 
 for k, v in pairs(activeStats) do
     RegisterAlias(v, k)
+end
+
+if LOCALE == "ruRU" then
+    RegisterAlias("к исцеляющим заклинаниям", "healing")
+    RegisterAlias("к лечению", "healing")
+    RegisterAlias("к урону от заклинаний", "spell power")
+    RegisterAlias("к наносящим урон и исцеляющим заклинаниям", "spell power")
 end
 
 local BLIZZ_SHORT_STATS = {
@@ -1337,6 +1334,7 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^%+([%d%.]+) ко всем характеристикам" },
         allRes = { "^%+([%d%.]+) ко всем видам сопротивления", "^%+([%d%.]+) к полной устойчивости" },
         rules = {
+            { "^%+([%d%., ]+) к лечению и %+([%d%., ]+) к урону от заклинаний", "dual_heal_sp" },
             { "силивает .-исцеление максимум на ([%d%., ]+) .-а урон .-максимум на ([%d%., ]+)", "dual_heal_sp" },
             { "силивает исцеление .-максимум на ([%d%., ]+) .-увеличивает урон .-максимум на ([%d%., ]+)", "dual_heal_sp" },
             { "величивает урон и силу исцеления .-на ([%d%., ]+)", "sp" },
@@ -1354,6 +1352,8 @@ local LOCALE_EQUIP_RULES = {
             { "светлой магии .-на ([%d%., ]+)", "holy spell damage" },
             { "силивает исцеление .-на ([%d%., ]+)", "healing" },
             { "величивает силу исцеления .-на ([%d%., ]+)", "healing" },
+            { "величивает лечение .-на ([%d%., ]+)", "healing" },
+            { "эффективность исцеляющих заклинаний .-на ([%d%., ]+)", "healing" },
             { "силу атаки на ([%d%., ]+) .-в облике кошки", "feral attack power" },
             { "величивает силу атаки на ([%d%., ]+)", "attack power" },
             { "овышает силу атаки на ([%d%., ]+)", "attack power" },

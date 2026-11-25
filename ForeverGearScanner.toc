@@ -10,7 +10,6 @@
 ## X-Curse-Project-ID: 1802449
 ## IconTexture: Interface\AddOns\ForeverGearScanner\Textures\Logo
 ## OptionalDependencies: Pawn
-## SavedVariables: ForeverGearScannerDB
 
 locale.lua
 core.lua
