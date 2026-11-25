@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.0
+
+- **All 11 official WoW languages supported:** Automatically adapts UI labels, dropdowns, sort bar, card tags, stat autocomplete, and number formatting to your `GetLocale()` client language (`enUS`/`enGB`, `deDE`, `frFR`, `esES`, `esMX`, `ptBR`, `itIT`, `ruRU`, `koKR`, `zhCN`, `zhTW`). Combines Blizzard GlobalStrings (`INVTYPE_*`, `ITEM_QUALITY*_DESC`, `ITEM_MOD_*`, `ITEM_LEVEL`, `ITEM_MIN_LEVEL`, `ARMOR_TEMPLATE`, `DAMAGE_TEMPLATE`, `SPEED`, `ITEM_SET_BONUS*`) with localized Classic/Forever `Equip:` stat parsing, including WoW Forever `ruRU` overrides, French non-breaking spaces (`\194\160`), comma decimals, and Korean/Chinese suffix stats.
+- **AH tab `SetPoint` fix (without `LibAHTab`):** Fixed `Action[SetPoint] failed because[Cannot anchor to itself]` in `AttachToAuctionHouse()` when Auctionator/TSM (`LibAHTab-1-0`) is not installed by capturing the previous tab before `CreateFrame` appends the new tab to `AuctionHouseFrame.Tabs` and giving the tab an addon-prefixed frame name (`FGS_AuctionHouseTab`).
+
 ## v1.1.1
 
 - **Tooltip set-bonus & proc fix:** Ignored `(N) Set:` and active `Set:` lines during item parsing so set bonuses (e.g. *Bindings of Elements* `(3) Set:` / `(6) Set:`) are no longer added onto an individual item's stats or pills. Excluded `Use:` and temporary proc descriptions from passive stat totals while keeping passive Classic `%` (`Crit`, `Hit`, `Dodge`, `Parry`, `Block`) stats intact.

@@ -22,6 +22,7 @@ The default Auction House in **World of Warcraft: Forever** (`Interface: 16001`)
 - **Held in Off-Hand and auto-expanding weapon/armor filters:** Standard AH categories bury off-hand items under Miscellaneous armor. Forever Gear Scanner gives you direct **Held in Off-Hand** slot filtering, keeps **Weapon Filters** (`Damage`, `DPS`, `Speed`) and **Armour Filters** tucked neatly under `Any Equipment`, and auto-expands the matching section when you switch **Cat**.
 - **Exact Gold / Silver / Copper price cap:** Set your max budget in coin boxes before scanning, and narrow results further by **Req Level**, **Rarity**, **Category**, **Subtype**, and **Slot**.
 - **Unusable gear warnings:** If **Usable Only** is unchecked, items your character cannot equip tint red on the icon and highlight the missing proficiency, level, or class requirement directly on the card.
+- **Multi-language support (all 11 official WoW locales):** Automatically translates the UI, stat dropdown/filtering, number formats (`.` / `,`), and Classic/Forever `Equip:` tooltip stat parsing for `enUS`/`enGB`, `deDE`, `frFR`, `esES`, `esMX`, `ptBR`, `itIT`, `ruRU`, `koKR`, `zhCN`, and `zhTW`.
 - **Safe 2-step buyout:** Clicking **Buyout** checks the cheapest live listing and switches the button to **Confirm Buy**. Nothing is bought until your second click.
 
 ## Screenshots
