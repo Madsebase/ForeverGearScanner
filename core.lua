@@ -136,6 +136,8 @@ local STAT_CANONICAL_NAMES = {
     ["spi"]                         = "spirit",
     ["spell damage"]                = "spell power",
     ["spell dmg"]                   = "spell power",
+    ["damage and healing spells"]   = "spell power",
+    ["healing and spell damage"]    = "spell power",
     ["sp"]                          = "spell power",
     ["spell power"]                 = "spell power",
     ["healing"]                     = "healing",
@@ -222,6 +224,11 @@ end
 
 -- Ordered most-specific first so combined lines aren't swallowed by generic rules
 local EQUIP_STAT_RULES = {
+    -- "+15 Healing Spells and +5 Damage Spells" (Classic random-enchant / enchant shorthand)
+    { pattern = "^%+([%d,]+) [Hh]ealing [Ss]pells and %+([%d,]+) [Dd]amage [Ss]pells", fn = function(stats, v1, v2)
+        AddStat(stats, "healing", ToNumber(v1))
+        AddStat(stats, "spell power", ToNumber(v2))
+    end },
     -- "Equip: Increases healing done by up to 9 and damage done by up to 3 for all magical spells and effects."
     { pattern = "[Ii]ncreases healing done by up to ([%d,]+) and damage done by up to ([%d,]+)", fn = function(stats, v1, v2)
         AddStat(stats, "healing", ToNumber(v1))

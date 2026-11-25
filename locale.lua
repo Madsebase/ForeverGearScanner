@@ -1018,6 +1018,51 @@ if LOCALE == "ruRU" then
     RegisterAlias("к лечению", "healing")
     RegisterAlias("к урону от заклинаний", "spell power")
     RegisterAlias("к наносящим урон и исцеляющим заклинаниям", "spell power")
+elseif LOCALE == "deDE" then
+    RegisterAlias("heilzauber", "healing")
+    RegisterAlias("heilung", "healing")
+    RegisterAlias("schadenszauber und heilzauber", "spell power")
+    RegisterAlias("zauberschaden", "spell power")
+    RegisterAlias("zauberschaden und heilung", "spell power")
+elseif LOCALE == "frFR" then
+    RegisterAlias("aux sorts de soins", "healing")
+    RegisterAlias("aux soins", "healing")
+    RegisterAlias("aux dégâts et aux sorts de soins", "spell power")
+    RegisterAlias("aux dégâts des sorts", "spell power")
+    RegisterAlias("aux dégâts des sorts et aux soins", "spell power")
+    RegisterAlias("à la puissance des sorts", "spell power")
+elseif LOCALE == "esES" or LOCALE == "esMX" then
+    RegisterAlias("de hechizos de sanación", "healing")
+    RegisterAlias("de hechizos de curación", "healing")
+    RegisterAlias("sanación", "healing")
+    RegisterAlias("de daño y hechizos de curación", "spell power")
+    RegisterAlias("daño con hechizos", "spell power")
+    RegisterAlias("daño y sanación con hechizos", "spell power")
+elseif LOCALE == "ptBR" then
+    RegisterAlias("feitiços de cura", "healing")
+    RegisterAlias("cura", "healing")
+    RegisterAlias("dano mágico", "spell power")
+    RegisterAlias("dano mágico e cura", "spell power")
+    RegisterAlias("de poder mágico", "spell power")
+elseif LOCALE == "koKR" then
+    RegisterAlias("치유 효과 증가", "healing")
+    RegisterAlias("주문 치유량", "healing")
+    RegisterAlias("치유 및 주문 공격력", "spell power")
+    RegisterAlias("주문 공격력", "spell power")
+    RegisterAlias("주문 공격력 및 치유량", "spell power")
+elseif LOCALE == "zhCN" then
+    RegisterAlias("治疗法术", "healing")
+    RegisterAlias("治疗量", "healing")
+    RegisterAlias("治疗", "healing")
+    RegisterAlias("伤害和治疗法术", "spell power")
+    RegisterAlias("法术伤害", "spell power")
+    RegisterAlias("法术伤害和治疗", "spell power")
+elseif LOCALE == "zhTW" then
+    RegisterAlias("治療法術", "healing")
+    RegisterAlias("治療", "healing")
+    RegisterAlias("傷害及治療法術", "spell power")
+    RegisterAlias("法術傷害", "spell power")
+    RegisterAlias("法術傷害和治療", "spell power")
 end
 
 local BLIZZ_SHORT_STATS = {
@@ -1129,6 +1174,7 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^%+([%d%.]+) alle werte" },
         allRes = { "^%+([%d%.]+) alle widerstände" },
         rules = {
+            { "^%+([%d%.,]+) Heilzauber und %+([%d%.,]+) Schadenszauber", "dual_heal_sp" },
             { "[Ee]rhöht durch sämtliche Zauber und magische Effekte verursachte Heilung um bis zu ([%d%.,]+) und den verursachten Schaden um bis zu ([%d%.,]+)", "dual_heal_sp" },
             { "[Ee]rhöht .-Zauber .-Schaden und Heilung um bis zu ([%d%.,]+)", "sp" },
             { "[Ee]rhöht die Zaubermacht um ([%d%.,]+)", "sp" },
@@ -1171,6 +1217,7 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^%+([%d%.]+) à toutes les caractéristiques" },
         allRes = { "^%+([%d%.]+) à toutes les résistances" },
         rules = {
+            { "^%+([%d%., ]+) aux sorts de soins et %+([%d%., ]+) aux dégâts des sorts", "dual_heal_sp" },
             { "[Aa]ugmente les soins prodigués d'un maximum de ([%d%., ]+) et les dégâts d'un maximum de ([%d%., ]+)", "dual_heal_sp" },
             { "[Aa]ugmente les dégâts et les soins .-de ([%d%., ]+) au maximum", "sp" },
             { "[Aa]ugmente les soins et dégâts .-de ([%d%., ]+) au maximum", "sp" },
@@ -1210,6 +1257,7 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^%+([%d%.]+) todas las estadísticas" },
         allRes = { "^%+([%d%.]+) todas las resistencias" },
         rules = {
+            { "^%+([%d%.,]+) hechizos de sanación y %+([%d%.,]+) hechizos de daño", "dual_heal_sp" },
             { "[Aa]umenta hasta ([%d%.,]+) .-sanación realizada y hasta ([%d%.,]+) .-daño infligido", "dual_heal_sp" },
             { "[Aa]umenta hasta ([%d%.,]+) .-daño y la sanación", "sp" },
             { "[Aa]umenta .-daño y la sanación .-hasta en ([%d%.,]+)", "sp" },
@@ -1249,6 +1297,8 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^%+([%d%.]+) em todos os atributos" },
         allRes = { "^%+([%d%.]+) em todas as resistências" },
         rules = {
+            { "^%+([%d%.,]+) Feitiços de Cura e %+([%d%.,]+) Feitiços de Dano", "dual_heal_sp" },
+            { "^Feitiços de Cura e de Dano %+([%d%.,]+)", "sp" },
             { "[Aa]umenta em ([%d%.,]+) a cura realizada e em até ([%d%.,]+) o dano causado", "dual_heal_sp" },
             { "[Aa]umenta em até ([%d%.,]+) o dano .-e a cura", "sp" },
             { "[Aa]umenta em ([%d%.,]+) o poder mágico", "sp" },
@@ -1399,6 +1449,7 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^모든 능력치 %+([%d%.]+)" },
         allRes = { "^모든 저항력 %+([%d%.]+)" },
         rules = {
+            { "주문 치유량 %+([%d%.,]+) / 주문 공격력 %+([%d%.,]+)", "dual_heal_sp" },
             { "치유량이 최대 ([%d%.,]+)만큼, 공격력이 최대 ([%d%.,]+)만큼 증가합니다", "dual_heal_sp" },
             { "피해와 치유량이 최대 ([%d%.,]+)만큼 증가합니다", "sp" },
             { "공격력과 치유량이 최대 ([%d%.,]+)만큼 증가합니다", "sp" },
@@ -1433,7 +1484,9 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^%+([%d%.]+) 所有属性" },
         allRes = { "^%+([%d%.]+) 所有抗性" },
         rules = {
+            { "^%+([%d%.,]+) 法术治疗，%+([%d%.,]+) 法术伤害", "dual_heal_sp" },
             { "使法术治疗提高最多([%d%.,]+)点，法术伤害提高最多([%d%.,]+)点", "dual_heal_sp" },
+            { "治疗法术和效果所回复的生命值提高([%d%.,]+)点", "healing" },
             { "造成的伤害和治疗效果，最多([%d%.,]+)点", "sp" },
             { "法术强度提高([%d%.,]+)点", "sp" },
             { "火焰法术和效果.-最多([%d%.,]+)点", "fire spell damage" },
@@ -1468,6 +1521,7 @@ local LOCALE_EQUIP_RULES = {
         allStats = { "^%+([%d%.]+)所有屬性" },
         allRes = { "^%+([%d%.]+)所有抗性" },
         rules = {
+            { "^%+([%d%.,]+)[ \t\r\n]*治療法術和%+([%d%.,]+)[ \t\r\n]*傷害法術", "dual_heal_sp" },
             { "治療效果提高最多([%d%.,]+)點，法術傷害提高最多([%d%.,]+)點", "dual_heal_sp" },
             { "造成的傷害和治療效果.-最多([%d%.,]+)點", "sp" },
             { "法術能量提高([%d%.,]+)點", "sp" },
