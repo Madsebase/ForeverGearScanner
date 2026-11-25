@@ -86,9 +86,9 @@ local WEAPON_SUBCLASS_SLOTS = {}
 do
     local WS = Enum and Enum.ItemWeaponSubclass
     if WS then
-        local oneHanded = { "INVTYPE_WEAPON", "INVTYPE_WEAPONMAINHAND", "INVTYPE_WEAPONOFFHAND" }
+        local oneHandSlots = { "INVTYPE_WEAPONMAINHAND", "INVTYPE_WEAPONOFFHAND" }
         for _, key in ipairs({ "Axe1H", "Mace1H", "Sword1H", "Dagger", "Unarmed", "Bearclaw", "Catclaw", "Warglaive" }) do
-            if WS[key] ~= nil then WEAPON_SUBCLASS_SLOTS[WS[key]] = MakeSlotList(unpack(oneHanded)) end
+            if WS[key] ~= nil then WEAPON_SUBCLASS_SLOTS[WS[key]] = MakeSlotList(unpack(oneHandSlots)) end
         end
         for _, key in ipairs({ "Axe2H", "Mace2H", "Polearm", "Sword2H", "Staff", "Fishingpole" }) do
             if WS[key] ~= nil then WEAPON_SUBCLASS_SLOTS[WS[key]] = MakeSlotList("INVTYPE_2HWEAPON") end

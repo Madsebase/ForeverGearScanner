@@ -897,6 +897,10 @@ local function PassesFilter(item, ignoreUpgradesOnly)
             if itemSlot ~= "INVTYPE_RANGED" and itemSlot ~= "INVTYPE_RANGEDRIGHT" then return false end
         elseif fl.invTypeFilter == "INVTYPE_WEAPON" then
             if itemSlot ~= "INVTYPE_WEAPON" and itemSlot ~= "INVTYPE_WEAPONMAINHAND" and itemSlot ~= "INVTYPE_WEAPONOFFHAND" then return false end
+        elseif fl.invTypeFilter == "INVTYPE_WEAPONMAINHAND" then
+            if itemSlot ~= "INVTYPE_WEAPONMAINHAND" and itemSlot ~= "INVTYPE_WEAPON" then return false end
+        elseif fl.invTypeFilter == "INVTYPE_WEAPONOFFHAND" then
+            if itemSlot ~= "INVTYPE_WEAPONOFFHAND" and itemSlot ~= "INVTYPE_WEAPON" then return false end
         else
             if itemSlot ~= fl.invTypeFilter then return false end
         end
@@ -1117,6 +1121,20 @@ local function BuildClassFilters()
             end
             if Enum.InventoryType.IndexWeaponoffhandType then
                 table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponoffhandType })
+            end
+            return filters
+        elseif Enum.InventoryType.IndexWeaponmainhandType and invEnum == Enum.InventoryType.IndexWeaponmainhandType then
+            local weaponClass = fl.classID or Enum.ItemClass.Weapon
+            table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponmainhandType })
+            if Enum.InventoryType.IndexWeaponType then
+                table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponType })
+            end
+            return filters
+        elseif Enum.InventoryType.IndexWeaponoffhandType and invEnum == Enum.InventoryType.IndexWeaponoffhandType then
+            local weaponClass = fl.classID or Enum.ItemClass.Weapon
+            table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponoffhandType })
+            if Enum.InventoryType.IndexWeaponType then
+                table.insert(filters, { classID = weaponClass, subClassID = fl.subClassID, inventoryType = Enum.InventoryType.IndexWeaponType })
             end
             return filters
         end
