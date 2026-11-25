@@ -922,10 +922,10 @@ local function ClearFilters()
 end
 
 local function SyncFiltersFromUI()
-    local function getVal(edit)
+    local function getVal(edit, allowDecimal)
         local t = edit:GetText()
         if not t or t == "" then return 0 end
-        if AGS.ParseNumber then return AGS.ParseNumber(t, true) end
+        if AGS.ParseNumber then return AGS.ParseNumber(t, allowDecimal) end
         return tonumber(t) or 0
     end
 
@@ -939,19 +939,19 @@ local function SyncFiltersFromUI()
     fl.upgradesOnly = checkPawnUpgrades and checkPawnUpgrades:GetChecked() or false
     fl.pawnScale = currentPawnScale
 
-    fl.minLevel = getVal(editReqLevelMin)
-    fl.maxLevel = getVal(editReqLevelMax)
+    fl.minLevel = getVal(editReqLevelMin, false)
+    fl.maxLevel = getVal(editReqLevelMax, false)
 
-    local maxGold   = getVal(editBuyoutGold)
-    local maxSilver = getVal(editBuyoutSilver)
-    local maxCopper = getVal(editBuyoutCopper)
+    local maxGold   = getVal(editBuyoutGold, false)
+    local maxSilver = getVal(editBuyoutSilver, false)
+    local maxCopper = getVal(editBuyoutCopper, false)
     fl.maxBuyout = (maxGold * 10000) + (maxSilver * 100) + maxCopper
 
-    fl.minDamage = getVal(editWeaponMin); fl.maxDamage = getVal(editWeaponMax)
-    fl.minDPS = getVal(editDpsMin); fl.maxDPS = getVal(editDpsMax)
-    fl.minSpeed = getVal(editSpeedMin); fl.maxSpeed = getVal(editSpeedMax)
+    fl.minDamage = getVal(editWeaponMin, false); fl.maxDamage = getVal(editWeaponMax, false)
+    fl.minDPS = getVal(editDpsMin, true); fl.maxDPS = getVal(editDpsMax, true)
+    fl.minSpeed = getVal(editSpeedMin, true); fl.maxSpeed = getVal(editSpeedMax, true)
 
-    fl.minArmor = getVal(editArmorMin); fl.maxArmor = getVal(editArmorMax)
+    fl.minArmor = getVal(editArmorMin, false); fl.maxArmor = getVal(editArmorMax, false)
 
     fl.stats = {}
     for _, row in ipairs(statFilterRows) do
@@ -959,8 +959,8 @@ local function SyncFiltersFromUI()
         if statName and statName ~= "" then
             table.insert(fl.stats, {
                 name = statName,
-                min = getVal(row.editMin),
-                max = getVal(row.editMax)
+                min = getVal(row.editMin, true),
+                max = getVal(row.editMax, true)
             })
         end
     end
@@ -1176,7 +1176,7 @@ local function PopulateCard(card, item)
         local shortScale = item.pawnScale and string.gsub(item.pawnScale, "^[^:]+:%s*", "") or ""
         local pctStr
         if item.pawnUpgrade >= 9999 then
-            pctStr = (shortScale ~= "" and (shortScale .. " ") or "") .. "Upgrade"
+            pctStr = (shortScale ~= "" and (shortScale .. " ") or "") .. (L.BADGE_UPGRADE or "Upgrade")
         else
             pctStr = string.format("+%d%%", math.floor(item.pawnUpgrade + 0.5)) .. (shortScale ~= "" and (" " .. shortScale) or "")
         end
