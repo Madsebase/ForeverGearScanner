@@ -12,5 +12,6 @@
 ## OptionalDependencies: Pawn
 ## SavedVariables: ForeverGearScannerDB
 
+locale.lua
 core.lua
 ui.lua

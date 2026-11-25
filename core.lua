@@ -1,6 +1,7 @@
 local addonName, AGS = ...
 
 _G["ForeverGearScanner"] = AGS
+local L = AGS.L or {}
 
 AGS.Results = {}
 AGS.RawResults = {}
@@ -96,17 +97,26 @@ local INVTYPE_TO_ENUM = {
 ---------------------------------------------------------------------------
 local function CleanString(text)
     if not text then return "" end
+    text = string.gsub(text, "\194\160", " ")
     text = string.gsub(text, "|c%x%x%x%x%x%x%x%x", "")
     text = string.gsub(text, "|r", "")
     text = string.gsub(text, "|H.-|h(.-)|h", "%1")
-    text = string.gsub(text, "%s+", " ")
-    text = string.gsub(text, "^%s*(.-)%s*$", "%1")
+    text = string.gsub(text, "[ \t\r\n]+", " ")
+    text = string.gsub(text, "^[ \t\r\n]*(.-)[ \t\r\n]*$", "%1")
     return text
 end
 
 local function ToNumber(str)
+    if AGS.ParseNumber then return AGS.ParseNumber(str, false) end
     if not str then return 0 end
     str = string.gsub(str, ",", "")
+    return tonumber(str) or 0
+end
+
+local function ToFloat(str)
+    if AGS.ParseNumber then return AGS.ParseNumber(str, true) end
+    if not str then return 0 end
+    str = string.gsub(str, ",", ".")
     return tonumber(str) or 0
 end
 
@@ -186,14 +196,17 @@ local STAT_CANONICAL_NAMES = {
 }
 
 local function CanonicalizeStatName(rawName)
-    local lower = string.lower(rawName or "")
-    lower = string.gsub(lower, "%.+$", "")
-    lower = string.gsub(lower, "^%s*(.-)%s*$", "%1")
+    local lower = string.lower(CleanString(rawName or ""))
+    lower = string.gsub(lower, "[%.:：]+$", "")
+    lower = string.gsub(lower, "^[ \t\r\n]*(.-)[ \t\r\n]*$", "%1")
     if STAT_CANONICAL_NAMES[lower] then
         return STAT_CANONICAL_NAMES[lower]
     end
+    if AGS.LocalizedStatAliases and AGS.LocalizedStatAliases[lower] then
+        return AGS.LocalizedStatAliases[lower]
+    end
     -- Normalize "X Spell Damage" / "X Damage" variants
-    local school = string.match(lower, "^(%a+)%s+damage$")
+    local school = string.match(lower, "^([A-Za-z]+)[ \t\r\n]+damage$")
     if school and school ~= "spell" then
         return school .. " spell damage"
     end
@@ -233,72 +246,72 @@ local EQUIP_STAT_RULES = {
         AddStat(stats, "attack power", ToNumber(v1))
     end },
     -- Crit / Hit / Haste (spell variants before generic)
-    { pattern = "[Ii]mproves your chance to get a critical strike with spells by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "spell crit", tonumber(v1) or 0)
+    { pattern = "[Ii]mproves your chance to get a critical strike with spells by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "spell crit", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your spell critical strike rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your spell critical strike rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "spell crit", ToNumber(v1))
     end },
-    { pattern = "[Ii]mproves your chance to get a critical strike by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "crit", tonumber(v1) or 0)
+    { pattern = "[Ii]mproves your chance to get a critical strike by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "crit", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your critical strike rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your critical strike rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "crit", ToNumber(v1))
     end },
-    { pattern = "[Ii]mproves your chance to hit with spells by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "spell hit", tonumber(v1) or 0)
+    { pattern = "[Ii]mproves your chance to hit with spells by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "spell hit", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your spell hit rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your spell hit rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "spell hit", ToNumber(v1))
     end },
-    { pattern = "[Ii]mproves your chance to hit by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "hit", tonumber(v1) or 0)
+    { pattern = "[Ii]mproves your chance to hit by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "hit", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your hit rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your hit rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "hit", ToNumber(v1))
     end },
-    { pattern = "[Ii]ncreases your spell casting speed by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "spell haste", tonumber(v1) or 0)
+    { pattern = "[Ii]ncreases your spell casting speed by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "spell haste", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your spell haste rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your spell haste rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "spell haste", ToNumber(v1))
     end },
-    { pattern = "[Ii]ncreases your attack speed by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "haste", tonumber(v1) or 0)
+    { pattern = "[Ii]ncreases your attack speed by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "haste", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your .*haste rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your .*haste rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "haste", ToNumber(v1))
     end },
     -- MP5 / HP5
-    { pattern = "[Rr]estores ([%d,]+) mana per 5 sec", fn = function(stats, v1)
+    { pattern = "[Rr]estores ([%d,%.]+) mana per 5 sec", fn = function(stats, v1)
         AddStat(stats, "mp5", ToNumber(v1))
     end },
-    { pattern = "[Rr]estores ([%d,]+) health per 5 sec", fn = function(stats, v1)
+    { pattern = "[Rr]estores ([%d,%.]+) health per 5 sec", fn = function(stats, v1)
         AddStat(stats, "hp5", ToNumber(v1))
     end },
     -- Tank / Mitigation / Penetration
-    { pattern = "[Ii]ncreased [Dd]efense %+([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreased [Dd]efense %+([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "defense", ToNumber(v1))
     end },
-    { pattern = "[Ii]ncreases defense rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases defense rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "defense", ToNumber(v1))
     end },
-    { pattern = "[Ii]ncreases your chance to dodge.-by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "dodge", tonumber(v1) or 0)
+    { pattern = "[Ii]ncreases your chance to dodge.-by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "dodge", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your dodge rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your dodge rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "dodge", ToNumber(v1))
     end },
-    { pattern = "[Ii]ncreases your chance to parry.-by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "parry", tonumber(v1) or 0)
+    { pattern = "[Ii]ncreases your chance to parry.-by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "parry", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your parry rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your parry rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "parry", ToNumber(v1))
     end },
-    { pattern = "[Ii]ncreases your chance to block.-by ([%d%.]+)%%", fn = function(stats, v1)
-        AddStat(stats, "block", tonumber(v1) or 0)
+    { pattern = "[Ii]ncreases your chance to block.-by ([%d%.,]+)%%", fn = function(stats, v1)
+        AddStat(stats, "block", ToFloat(v1))
     end },
-    { pattern = "[Ii]ncreases your block rating by ([%d,]+)", fn = function(stats, v1)
+    { pattern = "[Ii]ncreases your block rating by ([%d,%.]+)", fn = function(stats, v1)
         AddStat(stats, "block", ToNumber(v1))
     end },
     { pattern = "[Ii]ncreases the block value of your shield by ([%d,]+)", fn = function(stats, v1)
@@ -321,62 +334,254 @@ local EQUIP_STAT_RULES = {
     end },
 }
 
+local LOCALE_RULES = {}
+
+local function EscapeLuaPattern(text)
+    return (string.gsub(text, "([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1"))
+end
+
+local function BuildPrefixRegex(globalKey)
+    local tmpl = _G[globalKey]
+    if type(tmpl) ~= "string" or tmpl == "" then return nil end
+    local s = CleanString(tmpl)
+    local before = string.match(s, "^(.-)%%s") or s
+    if before == "" then return nil end
+    if AGS.TemplateToPattern then
+        local pat = AGS.TemplateToPattern(before, true)
+        if pat then return string.sub(pat, 1, -2) end
+    end
+    return "^" .. EscapeLuaPattern(before)
+end
+
+local function MakeLocaleStatFn(kind)
+    if kind == "dual_heal_sp" then
+        return function(stats, v1, v2)
+            AddStat(stats, "healing", ToNumber(v1))
+            AddStat(stats, "spell power", ToNumber(v2))
+        end
+    elseif kind == "sp" then
+        return function(stats, v1)
+            AddStat(stats, "spell power", ToNumber(v1))
+        end
+    end
+    return function(stats, v1)
+        local val = (string.find(tostring(v1), "[%.,]%d%d?$")) and ToFloat(v1) or ToNumber(v1)
+        AddStat(stats, kind, val)
+    end
+end
+
+local ITEM_MOD_GLOBAL_STAT = {
+    { "ITEM_MOD_SPELL_POWER",            "spell power" },
+    { "ITEM_MOD_SPELL_DAMAGE_DONE",      "spell power" },
+    { "ITEM_MOD_SPELL_HEALING_DONE",     "healing" },
+    { "ITEM_MOD_ATTACK_POWER",           "attack power" },
+    { "ITEM_MOD_RANGED_ATTACK_POWER",    "ranged attack power" },
+    { "ITEM_MOD_FERAL_ATTACK_POWER",     "feral attack power" },
+    { "ITEM_MOD_CRIT_SPELL_RATING",      "spell crit" },
+    { "ITEM_MOD_CRIT_RATING",            "crit" },
+    { "ITEM_MOD_HIT_SPELL_RATING",       "spell hit" },
+    { "ITEM_MOD_HIT_RATING",             "hit" },
+    { "ITEM_MOD_HASTE_SPELL_RATING",     "spell haste" },
+    { "ITEM_MOD_HASTE_RATING",           "haste" },
+    { "ITEM_MOD_MANA_REGENERATION",      "mp5" },
+    { "ITEM_MOD_HEALTH_REGENERATION",    "hp5" },
+    { "ITEM_MOD_DEFENSE_SKILL_RATING",   "defense" },
+    { "ITEM_MOD_DODGE_RATING",           "dodge" },
+    { "ITEM_MOD_PARRY_RATING",           "parry" },
+    { "ITEM_MOD_BLOCK_RATING",           "block" },
+    { "ITEM_MOD_BLOCK_VALUE",            "block value" },
+    { "ITEM_MOD_EXPERTISE_RATING",       "expertise" },
+    { "ITEM_MOD_SPELL_PENETRATION",      "spell penetration" },
+    { "ITEM_MOD_ARMOR_PENETRATION_RATING","armor penetration" },
+}
+
+local function RebuildLocaleRules()
+    if AGS.RefreshBlizzardAliases then AGS.RefreshBlizzardAliases() end
+
+    local lr = {
+        setPrefixes = { "^%(%d+%)%s*[Ss]et:", "^[Ss]et:" },
+        equipPrefixes = { "^[Ee]quip:%s*" },
+        usePrefixes = { "^[Uu]se:%s*" },
+        procTerms = {
+            "chance on ", "have a chance", "has a [%d%% ]*chance",
+            "chance to increase", "chance to restore", "for %d+ sec",
+        },
+        ilvlPatterns = { "^Item Level (%d+)$" },
+        reqLvlPatterns = { "^Requires Level (%d+)$" },
+        armorPatterns = { "^([%d,%. ]+) Armor$" },
+        blockPatterns = { "^([%d,%. ]+) Block$" },
+        dmgPatterns = {},
+        dpsPatterns = { "%(([%d%.,]+) damage per second%)" },
+        speedPatterns = { "^Speed ([%d%.,]+)$" },
+        equipRules = {},
+        allStatsPatterns = {},
+        allResPatterns = {},
+    }
+
+    local setGrayPat = BuildPrefixRegex("ITEM_SET_BONUS_GRAY")
+    if setGrayPat then table.insert(lr.setPrefixes, setGrayPat) end
+    local setPat = BuildPrefixRegex("ITEM_SET_BONUS")
+    if setPat then table.insert(lr.setPrefixes, setPat) end
+
+    local eqTrig = _G["ITEM_SPELL_TRIGGER_ONEQUIP"]
+    if type(eqTrig) == "string" and eqTrig ~= "" then
+        table.insert(lr.equipPrefixes, "^" .. EscapeLuaPattern(CleanString(eqTrig)) .. "%s*")
+    end
+    local useTrig = _G["ITEM_SPELL_TRIGGER_ONUSE"]
+    if type(useTrig) == "string" and useTrig ~= "" then
+        table.insert(lr.usePrefixes, "^" .. EscapeLuaPattern(CleanString(useTrig)) .. "%s*")
+    end
+    local procTrig = _G["ITEM_SPELL_TRIGGER_ONPROC"]
+    if type(procTrig) == "string" and procTrig ~= "" then
+        table.insert(lr.procTerms, string.lower(CleanString(procTrig)))
+    end
+
+    if AGS.TemplateToPattern then
+        local pIlvl = AGS.TemplateToPattern(_G["ITEM_LEVEL"], true)
+        if pIlvl then table.insert(lr.ilvlPatterns, 1, pIlvl) end
+        local pReq = AGS.TemplateToPattern(_G["ITEM_MIN_LEVEL"], true)
+        if pReq then table.insert(lr.reqLvlPatterns, 1, pReq) end
+        local pArmor = AGS.TemplateToPattern(_G["ARMOR_TEMPLATE"], false)
+        if pArmor then table.insert(lr.armorPatterns, 1, pArmor) end
+        local pBlock = AGS.TemplateToPattern(_G["SHIELD_BLOCK_TEMPLATE"], false)
+        if pBlock then table.insert(lr.blockPatterns, 1, pBlock) end
+        local pDmg = AGS.TemplateToPattern(_G["DAMAGE_TEMPLATE"], false)
+        if pDmg then table.insert(lr.dmgPatterns, pDmg) end
+        local pDps = AGS.TemplateToPattern(_G["DPS_TEMPLATE"], true)
+        if pDps then table.insert(lr.dpsPatterns, 1, string.sub(pDps, 2, -2)) end
+    end
+
+    local speedWord = _G["SPEED"]
+    if type(speedWord) == "string" and speedWord ~= "" then
+        table.insert(lr.speedPatterns, 1, "^" .. EscapeLuaPattern(CleanString(speedWord)) .. "%s*([%d%.,]+)$")
+    end
+
+    local locData = AGS.GetLocaleTooltipData and AGS.GetLocaleTooltipData() or nil
+    if locData then
+        if locData.equipPrefix then table.insert(lr.equipPrefixes, locData.equipPrefix) end
+        if locData.usePrefix then table.insert(lr.usePrefixes, locData.usePrefix) end
+        if locData.procTerms then
+            for _, term in ipairs(locData.procTerms) do
+                table.insert(lr.procTerms, term)
+            end
+        end
+        if locData.allStats then
+            for _, p in ipairs(locData.allStats) do table.insert(lr.allStatsPatterns, p) end
+        end
+        if locData.allRes then
+            for _, p in ipairs(locData.allRes) do table.insert(lr.allResPatterns, p) end
+        end
+        if locData.rules then
+            for _, r in ipairs(locData.rules) do
+                if r[1] and r[2] then
+                    table.insert(lr.equipRules, { pattern = r[1], fn = MakeLocaleStatFn(r[2]) })
+                end
+            end
+        end
+    end
+
+    -- Auto-compiled Blizzard ITEM_MOD_* patterns (works across all 11 official locales)
+    if AGS.TemplateToPattern then
+        for _, entry in ipairs(ITEM_MOD_GLOBAL_STAT) do
+            local tmpl = _G[entry[1]]
+            if type(tmpl) == "string" and tmpl ~= "" then
+                local pat = AGS.TemplateToPattern(tmpl, false)
+                if pat then
+                    table.insert(lr.equipRules, { pattern = string.sub(pat, 2, -2), fn = MakeLocaleStatFn(entry[2]) })
+                end
+            end
+        end
+    end
+
+    for _, r in ipairs(EQUIP_STAT_RULES) do
+        table.insert(lr.equipRules, r)
+    end
+
+    LOCALE_RULES = lr
+end
+
+RebuildLocaleRules()
+AGS.RebuildLocaleRules = RebuildLocaleRules
+
+local function MatchesAny(text, patterns)
+    for _, pat in ipairs(patterns) do
+        local a, b = string.match(text, pat)
+        if a then return a, b end
+    end
+    return nil
+end
+
+local function StripFirstPrefix(text, prefixes)
+    for _, pat in ipairs(prefixes) do
+        local stripped, n = string.gsub(text, pat, "", 1)
+        if n > 0 then return stripped, true end
+    end
+    return text, false
+end
+
 local function ParseLine(leftText, rightText, parsed)
     leftText = CleanString(leftText)
     rightText = CleanString(rightText)
 
     if leftText ~= "" then
         local lowerLeft = string.lower(leftText)
-        local isSetBonus = string.match(lowerLeft, "^%(%d+%)%s*set:") ~= nil
-            or string.match(lowerLeft, "^set:") ~= nil
+        local isSetBonus = MatchesAny(leftText, LOCALE_RULES.setPrefixes) ~= nil
+            or MatchesAny(lowerLeft, LOCALE_RULES.setPrefixes) ~= nil
 
         if not isSetBonus then
             table.insert(parsed.allLines, leftText)
 
-            local ilvlMatch = string.match(leftText, "^Item Level (%d+)$")
-            if ilvlMatch then parsed.ilvl = tonumber(ilvlMatch) end
+            local ilvlMatch = MatchesAny(leftText, LOCALE_RULES.ilvlPatterns)
+            if ilvlMatch then parsed.ilvl = ToNumber(ilvlMatch) end
 
-            local reqMatch = string.match(leftText, "^Requires Level (%d+)$")
-            if reqMatch then parsed.reqLevel = tonumber(reqMatch) end
+            local reqMatch = MatchesAny(leftText, LOCALE_RULES.reqLvlPatterns)
+            if reqMatch then parsed.reqLevel = ToNumber(reqMatch) end
 
-            local armor = string.match(leftText, "^([%d,]+) Armor$")
+            local armor = MatchesAny(leftText, LOCALE_RULES.armorPatterns)
             if armor then
                 parsed.armor = ToNumber(armor)
             end
 
-            local block = string.match(leftText, "^([%d,]+) Block$")
+            local block = MatchesAny(leftText, LOCALE_RULES.blockPatterns)
             if block then
                 parsed.block = ToNumber(block)
             end
 
-            local minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)%s+.-Damage")
+            local minDmg, maxDmg = MatchesAny(leftText, LOCALE_RULES.dmgPatterns)
             if not minDmg then
-                minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)")
+                minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)%s+.-Damage")
+                if not minDmg and string.find(leftText, "Damage") then
+                    minDmg, maxDmg = string.match(leftText, "^([%d,]+)%s*%-%s*([%d,]+)")
+                end
             end
-            if minDmg and maxDmg and string.find(leftText, "Damage") then
+            if minDmg and maxDmg then
                 parsed.dmgMin = ToNumber(minDmg)
                 parsed.dmgMax = ToNumber(maxDmg)
             end
 
-            local dps = string.match(leftText, "%((%d+[%.%,]?%d*) damage per second%)")
+            local dps = MatchesAny(leftText, LOCALE_RULES.dpsPatterns)
             if dps then
-                dps = string.gsub(dps, ",", ".")
-                parsed.dps = tonumber(dps) or 0
+                parsed.dps = ToFloat(dps)
             end
 
-            local isUseLine = string.match(lowerLeft, "^use:") ~= nil
-            local isProcLine = string.find(lowerLeft, "chance on ", 1, true) ~= nil
-                or string.find(lowerLeft, "have a chance", 1, true) ~= nil
-                or string.find(lowerLeft, "has a [%d%% ]*chance") ~= nil
-                or string.find(lowerLeft, "chance to increase", 1, true) ~= nil
-                or string.find(lowerLeft, "chance to restore", 1, true) ~= nil
-                or string.find(lowerLeft, "for %d+ sec") ~= nil
+            local strippedEquip, isEquipLine = StripFirstPrefix(leftText, LOCALE_RULES.equipPrefixes)
+            local _, isUseLine = StripFirstPrefix(leftText, LOCALE_RULES.usePrefixes)
+            local isProcLine = false
+            for _, term in ipairs(LOCALE_RULES.procTerms) do
+                if string.find(lowerLeft, term, 1, not string.find(term, "[%%^%$]")) then
+                    isProcLine = true
+                    break
+                end
+            end
 
             -- Try verbose Forever/Classic Equip rules before generic +X Stat (skip Use:/proc/set bonuses)
             local consumedEquipStat = false
             if not isUseLine and not isProcLine then
-                for _, rule in ipairs(EQUIP_STAT_RULES) do
+                for _, rule in ipairs(LOCALE_RULES.equipRules) do
                     local a, b = string.match(leftText, rule.pattern)
+                    if not a and isEquipLine then
+                        a, b = string.match(strippedEquip, rule.pattern)
+                    end
                     if a then
                         rule.fn(parsed.stats, a, b)
                         consumedEquipStat = true
@@ -385,16 +590,38 @@ local function ParseLine(leftText, rightText, parsed)
                 end
 
                 if not consumedEquipStat then
-                    local stripped = string.gsub(leftText, "^Equip:%s*", "")
-                    local statValue, statName = string.match(stripped, "^%+([%d,%.]+)%%?%s+(.+)$")
+                    local allStatVal = MatchesAny(string.lower(strippedEquip), LOCALE_RULES.allStatsPatterns)
+                    if allStatVal then
+                        AddStat(parsed.stats, "all stats", ToNumber(allStatVal))
+                        if isEquipLine then consumedEquipStat = true end
+                    end
+                end
+                if not consumedEquipStat then
+                    local allResVal = MatchesAny(string.lower(strippedEquip), LOCALE_RULES.allResPatterns)
+                    if allResVal then
+                        AddStat(parsed.stats, "all resistances", ToNumber(allResVal))
+                        if isEquipLine then consumedEquipStat = true end
+                    end
+                end
+
+                if not consumedEquipStat then
+                    local statValue, statName = string.match(strippedEquip, "^%+([%d,%.]+)%%?[ \t\r\n]*(.+)$")
                     if not statValue then
-                        -- Handle reversed suffix form e.g. "Stamina +5"
-                        statName, statValue = string.match(stripped, "^([%a%s]+)%s+%+([%d,%.]+)%%?$")
+                        -- Handle reversed suffix form e.g. "Stamina +5", "체력 +5"
+                        local revName, revVal = string.match(strippedEquip, "^(.-)[ \t\r\n]*[:：]?[ \t\r\n]*%+([%d,%.]+)%%?$")
+                        if revName and revName ~= "" then
+                            local revLower = string.lower(revName)
+                            local knownAlias = STAT_CANONICAL_NAMES[revLower]
+                                or (AGS.LocalizedStatAliases and AGS.LocalizedStatAliases[revLower])
+                            if knownAlias or (AGS.Locale == "enUS" and string.match(revName, "^[A-Za-z \t\r\n]+$")) then
+                                statName, statValue = revName, revVal
+                            end
+                        end
                     end
                     if statValue and statName then
                         local canonical = CanonicalizeStatName(statName)
-                        AddStat(parsed.stats, canonical, ToNumber(string.gsub(statValue, "%.+$", "")))
-                        if string.match(leftText, "^Equip:") then
+                        AddStat(parsed.stats, canonical, ToFloat(string.gsub(statValue, "%.+$", "")))
+                        if isEquipLine then
                             consumedEquipStat = true
                         end
                     end
@@ -402,7 +629,7 @@ local function ParseLine(leftText, rightText, parsed)
             end
 
             -- Only show non-stat procs/uses in green effects pills so cards stay clean
-            if not consumedEquipStat and (string.match(leftText, "^Equip:") or string.match(leftText, "^Use:") or string.match(leftText, "^Chance on [Hh]it")) then
+            if not consumedEquipStat and (isEquipLine or isUseLine or isProcLine) then
                 table.insert(parsed.effects, leftText)
             end
         end
@@ -410,10 +637,9 @@ local function ParseLine(leftText, rightText, parsed)
 
     if rightText ~= "" then
         table.insert(parsed.allLines, rightText)
-        local speed = string.match(rightText, "^Speed (%d+[%.%,]?%d*)$")
+        local speed = MatchesAny(rightText, LOCALE_RULES.speedPatterns)
         if speed then
-            speed = string.gsub(speed, ",", ".")
-            parsed.speed = tonumber(speed) or 0
+            parsed.speed = ToFloat(speed)
         end
     end
 end
@@ -437,15 +663,16 @@ end
 
 local function RecordRedTooltipText(text, isRight, parsed)
     if not text or text == "" then return end
-    local trimmed = text:match("^%s*(.-)%s*$")
+    local trimmed = text:match("^[ \t\r\n]*(.-)[ \t\r\n]*$")
     if trimmed == "" then return end
     local u = parsed.unusable
     for _, existing in ipairs(u.reasons) do
         if existing == trimmed then return end
     end
     table.insert(u.reasons, trimmed)
-    local lower = string.lower(trimmed)
-    if string.find(lower, "requires level", 1, true) then
+    local cleaned = CleanString(trimmed)
+    local lower = string.lower(cleaned)
+    if MatchesAny(cleaned, LOCALE_RULES.reqLvlPatterns) or string.find(lower, "requires level", 1, true) then
         u.level = true
     elseif isRight then
         u.subType = true
@@ -885,13 +1112,13 @@ local function DispatchBrowseOrWait(query)
             scanState.pendingMore = true
             scanState.pendingQuery = nil
         end
-        if AGS.UI then AGS.UI:SetStatus("Waiting for AH throttle...") end
+        if AGS.UI then AGS.UI:SetStatus(L.STATUS_THROTTLE_WAIT or "Waiting for AH throttle...") end
     end
 end
 
 function AGS:StartSearch()
     if not C_AuctionHouse or not C_AuctionHouse.SendBrowseQuery then
-        if self.UI then self.UI:SetStatus("Auction House API unavailable.") end
+        if self.UI then self.UI:SetStatus(L.STATUS_AH_UNAVAILABLE or "Auction House API unavailable.") end
         return
     end
 
@@ -907,7 +1134,7 @@ function AGS:StartSearch()
         self.UI:UpdateResults()
     end
     if self.UI and self.UI.SetStatus then
-        self.UI:SetStatus("Sending query to Auction House...")
+        self.UI:SetStatus(L.STATUS_SENDING or "Sending query to Auction House...")
     end
 
     local fl = self.Filters
@@ -955,7 +1182,7 @@ end
 function AGS:QuickBuyOrInspect(item)
     if not item or not item.itemKey then return end
     if AuctionHouseFrame and AuctionHouseFrame.IsShown and not AuctionHouseFrame:IsShown() then
-        if self.UI then self.UI:SetStatus("Open the Auction House to buy items.") end
+        if self.UI then self.UI:SetStatus(L.STATUS_OPEN_AH_BUY or "Open the Auction House to buy items.") end
         return
     end
 
@@ -967,7 +1194,7 @@ function AGS:QuickBuyOrInspect(item)
         item.readyBuyoutAmount = nil
         C_AuctionHouse.PlaceBid(auctionID, amount)
         if self.UI then
-            self.UI:SetStatus(string.format("Purchased %s for %s!", item.link or item.name, GetMoneyString(amount, true)))
+            self.UI:SetStatus(string.format(L.STATUS_PURCHASED or "Purchased %s for %s!", item.link or item.name, GetMoneyString(amount, true)))
             if self.UI.UpdateResults then self.UI:UpdateResults() end
         end
         return
@@ -979,7 +1206,7 @@ function AGS:QuickBuyOrInspect(item)
         { sortOrder = Enum.AuctionHouseSortOrder.Price, reverseSort = false }
     }, false)
     if self.UI then
-        self.UI:SetStatus("Fetching cheapest listing for " .. (item.link or item.name) .. "...")
+        self.UI:SetStatus(string.format(L.STATUS_FETCHING_CHEAPEST or "Fetching cheapest listing for %s...", item.link or item.name))
     end
 end
 
@@ -995,7 +1222,7 @@ local function OnUpdate(self, elapsed)
             scanState.phase = SCAN_STATE_IDLE
             scanState.pendingQuery = nil
             scanState.pendingMore = false
-            if AGS.UI then AGS.UI:SetStatus("Scan timed out. Try again.") end
+            if AGS.UI then AGS.UI:SetStatus(L.STATUS_TIMED_OUT or "Scan timed out. Try again.") end
         end
         return
     end
@@ -1030,19 +1257,19 @@ local function OnUpdate(self, elapsed)
             if not C_AuctionHouse.HasFullBrowseResults() then
                 DispatchBrowseOrWait(nil)
                 if scanState.phase == SCAN_STATE_BROWSING and AGS.UI then
-                    AGS.UI:SetStatus(string.format("Scanning more results... (%d matches so far)", #AGS.Results))
+                    AGS.UI:SetStatus(string.format(L.STATUS_SCAN_MORE or "Scanning more results... (%d matches so far)", #AGS.Results))
                 end
             else
                 AGS.IsScanning = false
                 scanState.phase = SCAN_STATE_IDLE
                 AGS:SortResults()
                 if AGS.UI then
-                    AGS.UI:SetStatus(string.format("Scan complete. Found %d matching gear items.", #AGS.Results))
+                    AGS.UI:SetStatus(string.format(L.STATUS_COMPLETE or "Scan complete. Found %d matching gear items.", #AGS.Results))
                 end
             end
         else
             if AGS.UI then
-                AGS.UI:SetStatus(string.format("Parsing tooltips... (%d / %d, %d matches)", scanState.batchIndex - 1, #batch, #AGS.Results))
+                AGS.UI:SetStatus(string.format(L.STATUS_PARSING or "Parsing tooltips... (%d / %d, %d matches)", scanState.batchIndex - 1, #batch, #AGS.Results))
             end
         end
     end
@@ -1060,7 +1287,7 @@ local function QueueBrowseBatch(results)
             scanState.phase = SCAN_STATE_IDLE
             AGS:SortResults()
             if AGS.UI then
-                AGS.UI:SetStatus(string.format("Scan complete. Found %d matching gear items.", #AGS.Results))
+                AGS.UI:SetStatus(string.format(L.STATUS_COMPLETE or "Scan complete. Found %d matching gear items.", #AGS.Results))
             end
         end
         return
@@ -1129,7 +1356,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             else
                 scanState.pendingMore = true
             end
-            if AGS.UI then AGS.UI:SetStatus("AH throttled – retrying automatically...") end
+            if AGS.UI then AGS.UI:SetStatus(L.STATUS_THROTTLE_RETRY or "AH throttled – retrying automatically...") end
         end
     elseif event == "AUCTION_HOUSE_BROWSE_FAILURE" then
         if not AGS.IsScanning then return end
@@ -1137,7 +1364,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         scanState.phase = SCAN_STATE_IDLE
         scanState.pendingQuery = nil
         scanState.pendingMore = false
-        if AGS.UI then AGS.UI:SetStatus("Auction House browse failed. Wait a moment and retry.") end
+        if AGS.UI then AGS.UI:SetStatus(L.STATUS_BROWSE_FAILED or "Auction House browse failed. Wait a moment and retry.") end
     elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then
         local itemKey = ...
         local pending = scanState.pendingBuyItem
@@ -1151,14 +1378,14 @@ f:SetScript("OnEvent", function(self, event, ...)
                     pending.readyBuyoutAmount = info.buyoutAmount
                     pending.buyoutPrice = info.buyoutAmount
                     if AGS.UI then
-                        AGS.UI:SetStatus(string.format("Cheapest listing ready (%s). Click 'Confirm Buy' to purchase %s.", GetMoneyString(info.buyoutAmount, true), pending.link or pending.name))
+                        AGS.UI:SetStatus(string.format(L.STATUS_READY_CONFIRM or "Cheapest listing ready (%s). Click 'Confirm Buy' to purchase %s.", GetMoneyString(info.buyoutAmount, true), pending.link or pending.name))
                         if AGS.UI.UpdateResults then AGS.UI:UpdateResults() end
                     end
                     return
                 end
             end
             if AGS.UI then
-                AGS.UI:SetStatus("No active buyout listing found for " .. (pending.link or pending.name) .. ".")
+                AGS.UI:SetStatus(string.format(L.STATUS_NO_BUYOUT or "No active buyout listing found for %s.", pending.link or pending.name))
             end
         end
     end
@@ -1170,5 +1397,5 @@ end)
 SLASH_FGS1 = "/fgs"
 SLASH_FGS2 = "/gearscanner"
 SlashCmdList["FGS"] = function()
-    print("|cFFFFD700ForeverGearScanner|r: Open the Auction House and click the 'Gear Scanner' tab.")
+    print("|cFFFFD700ForeverGearScanner|r: " .. (L.SLASH_HELP or "Open the Auction House and click the 'Gear Scanner' tab."))
 end

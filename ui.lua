@@ -3,6 +3,10 @@ if not AGS then return end
 
 AGS.UI = AGS.UI or {}
 local UI = AGS.UI
+local L = AGS.L or {}
+local GetSlotLabel = AGS.GetSlotLabel or function(s) return s or "" end
+local GetQualityLabel = AGS.GetQualityLabel or function(q) return "Quality " .. tostring(q) end
+local GetStatDisplayName = AGS.GetStatDisplayName or function(k) return k or "" end
 
 local BACKDROP_TEMPLATE = BackdropTemplateMixin and "BackdropTemplate" or nil
 
@@ -41,82 +45,51 @@ end
 ---------------------------------------------------------------------------
 -- Slot & Category Definitions
 ---------------------------------------------------------------------------
-local INVTYPE_NAMES = {
-    INVTYPE_HEAD="Head", INVTYPE_NECK="Neck", INVTYPE_SHOULDER="Shoulder",
-    INVTYPE_BODY="Shirt", INVTYPE_CHEST="Chest", INVTYPE_ROBE="Chest",
-    INVTYPE_WAIST="Waist", INVTYPE_LEGS="Legs", INVTYPE_FEET="Feet",
-    INVTYPE_WRIST="Wrist", INVTYPE_HAND="Hands", INVTYPE_FINGER="Finger",
-    INVTYPE_TRINKET="Trinket", INVTYPE_CLOAK="Back",
-    INVTYPE_WEAPON="One-Hand", INVTYPE_SHIELD="Shield",
-    INVTYPE_2HWEAPON="Two-Hand", INVTYPE_WEAPONMAINHAND="Main Hand",
-    INVTYPE_WEAPONOFFHAND="Off Hand", INVTYPE_HOLDABLE="Held in Off-Hand",
-    INVTYPE_RANGED="Ranged", INVTYPE_RANGEDRIGHT="Ranged",
-    INVTYPE_THROWN="Thrown", INVTYPE_RELIC="Relic", INVTYPE_TABARD="Tabard",
-}
-
 local ARMOR_SLOTS = {
-    { text = "Head",             invtype = "INVTYPE_HEAD" },
-    { text = "Neck",             invtype = "INVTYPE_NECK" },
-    { text = "Shoulder",         invtype = "INVTYPE_SHOULDER" },
-    { text = "Back",             invtype = "INVTYPE_CLOAK" },
-    { text = "Chest",            invtype = "INVTYPE_CHEST" },
-    { text = "Wrist",            invtype = "INVTYPE_WRIST" },
-    { text = "Hands",            invtype = "INVTYPE_HAND" },
-    { text = "Waist",            invtype = "INVTYPE_WAIST" },
-    { text = "Legs",             invtype = "INVTYPE_LEGS" },
-    { text = "Feet",             invtype = "INVTYPE_FEET" },
-    { text = "Finger",           invtype = "INVTYPE_FINGER" },
-    { text = "Trinket",          invtype = "INVTYPE_TRINKET" },
-    { text = "Held in Off-Hand", invtype = "INVTYPE_HOLDABLE" },
-    { text = "Shirt",            invtype = "INVTYPE_BODY" },
-    { text = "Tabard",           invtype = "INVTYPE_TABARD" },
+    { invtype = "INVTYPE_HEAD" },
+    { invtype = "INVTYPE_NECK" },
+    { invtype = "INVTYPE_SHOULDER" },
+    { invtype = "INVTYPE_CLOAK" },
+    { invtype = "INVTYPE_CHEST" },
+    { invtype = "INVTYPE_WRIST" },
+    { invtype = "INVTYPE_HAND" },
+    { invtype = "INVTYPE_WAIST" },
+    { invtype = "INVTYPE_LEGS" },
+    { invtype = "INVTYPE_FEET" },
+    { invtype = "INVTYPE_FINGER" },
+    { invtype = "INVTYPE_TRINKET" },
+    { invtype = "INVTYPE_HOLDABLE" },
+    { invtype = "INVTYPE_BODY" },
+    { invtype = "INVTYPE_TABARD" },
 }
 
 local WEAPON_SLOTS = {
-    { text = "One-Hand",         invtype = "INVTYPE_WEAPON" },
-    { text = "Two-Hand",         invtype = "INVTYPE_2HWEAPON" },
-    { text = "Main Hand",        invtype = "INVTYPE_WEAPONMAINHAND" },
-    { text = "Off Hand",         invtype = "INVTYPE_WEAPONOFFHAND" },
-    { text = "Held in Off-Hand", invtype = "INVTYPE_HOLDABLE" },
-    { text = "Ranged",           invtype = "INVTYPE_RANGED" },
-    { text = "Thrown",           invtype = "INVTYPE_THROWN" },
-    { text = "Relic",            invtype = "INVTYPE_RELIC" },
-    { text = "Shield",           invtype = "INVTYPE_SHIELD" },
-}
-
-local QUALITY_COLORS = {
-    [0] = "|cFF9D9D9DPoor|r",
-    [1] = "|cFFFFFFFFCommon|r",
-    [2] = "|cFF1EFF00Uncommon|r",
-    [3] = "|cFF0070DDRare|r",
-    [4] = "|cFFA335EEEpic|r",
-    [5] = "|cFFFF8000Legendary|r"
+    { invtype = "INVTYPE_WEAPON" },
+    { invtype = "INVTYPE_2HWEAPON" },
+    { invtype = "INVTYPE_WEAPONMAINHAND" },
+    { invtype = "INVTYPE_WEAPONOFFHAND" },
+    { invtype = "INVTYPE_HOLDABLE" },
+    { invtype = "INVTYPE_RANGED" },
+    { invtype = "INVTYPE_THROWN" },
+    { invtype = "INVTYPE_RELIC" },
+    { invtype = "INVTYPE_SHIELD" },
 }
 
 local PREDEFINED_STATS = {
-    "Spell Power", "Healing",
-    "Fire Spell Damage", "Frost Spell Damage", "Shadow Spell Damage",
-    "Nature Spell Damage", "Arcane Spell Damage", "Holy Spell Damage",
-    "Min Damage", "Max Damage", "DPS", "Speed",
-    "Strength", "Agility", "Stamina", "Intellect", "Spirit",
-    "Attack Power", "Ranged Attack Power", "Feral Attack Power",
-    "Crit", "Spell Crit", "Hit", "Spell Hit", "Haste", "Spell Haste",
-    "MP5", "HP5", "Defense", "Dodge", "Parry", "Block Value", "Block",
-    "Expertise", "Spell Penetration", "Armor Penetration", "All Stats",
-    "All Resistances", "Use:", "Chance on hit"
-}
-
-local STAT_DISPLAY_LABELS = {
-    mp5 = "MP5",
-    hp5 = "HP5",
-    dps = "DPS",
+    "spell power", "healing",
+    "fire spell damage", "frost spell damage", "shadow spell damage",
+    "nature spell damage", "arcane spell damage", "holy spell damage",
+    "min damage", "max damage", "dps", "speed",
+    "strength", "agility", "stamina", "intellect", "spirit",
+    "attack power", "ranged attack power", "feral attack power",
+    "crit", "spell crit", "hit", "spell hit", "haste", "spell haste",
+    "mp5", "hp5", "defense", "dodge", "parry", "block value", "block",
+    "expertise", "spell penetration", "armor penetration", "all stats",
+    "all resistances", "use:", "chance on hit"
 }
 
 local function FormatStatLabel(key)
-    if STAT_DISPLAY_LABELS[key] then
-        return STAT_DISPLAY_LABELS[key]
-    end
-    return (string.gsub(" " .. key, "%s(%l)", function(c) return " " .. string.upper(c) end):sub(2))
+    return GetStatDisplayName(key)
 end
 
 ---------------------------------------------------------------------------
@@ -177,7 +150,7 @@ local function FormatExistingItemLabel(existing)
             local byID = C_Item.GetItemNameByID(id)
             if byID then return byID end
         end
-        return "Item #" .. id
+        return string.format(L.ITEM_PREFIX or "Item #%d", id)
     end
     return existing
 end
@@ -249,9 +222,12 @@ local function ShowAutoComplete(targetEditBox)
     local query = targetEditBox:GetText()
     local matches = {}
     local lowerQuery = string.lower(query or "")
-    for _, stat in ipairs(PREDEFINED_STATS) do
-        if lowerQuery == "" or string.find(string.lower(stat), lowerQuery, 1, true) then
-            table.insert(matches, stat)
+    for _, statKey in ipairs(PREDEFINED_STATS) do
+        local display = GetStatDisplayName(statKey)
+        if lowerQuery == ""
+            or string.find(string.lower(display), lowerQuery, 1, true)
+            or string.find(statKey, lowerQuery, 1, true) then
+            table.insert(matches, display)
         end
     end
 
@@ -537,27 +513,28 @@ end
 -- Filter Sections
 ---------------------------------------------------------------------------
 local function CreateTypeFilters(parent)
-    local c = CreateCollapsibleSection(parent, "Type Filters", 104)
+    local c = CreateCollapsibleSection(parent, L.SEC_TYPE or "Type Filters", 104)
 
     -- Rarity
-    CreateLabel(c, "Rarity:", 5, -4)
+    CreateLabel(c, L.LBL_RARITY or "Rarity:", 5, -4)
     ddQuality = CreateFrame("Frame", "FGS_DDQuality", c, "UIDropDownMenuTemplate")
-    ddQuality:SetPoint("TOPLEFT", 38, -1)
-    UIDropDownMenu_SetWidth(ddQuality, 134)
+    ddQuality:SetPoint("TOPLEFT", 48, -1)
+    UIDropDownMenu_SetWidth(ddQuality, 124)
     UIDropDownMenu_Initialize(ddQuality, function()
+        local anyText = L.OPT_ANY or "Any"
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
-        info.text = "Any"
+        info.text = anyText
         info.arg1 = 0
         info.func = function(_, arg1)
             currentQuality = arg1
-            UIDropDownMenu_SetText(ddQuality, "Any")
+            UIDropDownMenu_SetText(ddQuality, anyText)
             CloseDropDownMenus()
         end
         UIDropDownMenu_AddButton(info)
 
         for qId = 0, 5 do
-            local qText = QUALITY_COLORS[qId] or ("Quality "..qId)
+            local qText = GetQualityLabel(qId)
             local inf = UIDropDownMenu_CreateInfo()
             inf.notCheckable = true
             inf.text = qText
@@ -570,24 +547,26 @@ local function CreateTypeFilters(parent)
             UIDropDownMenu_AddButton(inf)
         end
     end)
-    UIDropDownMenu_SetText(ddQuality, "Any")
+    UIDropDownMenu_SetText(ddQuality, L.OPT_ANY or "Any")
 
     -- Category (Weapon / Armor only)
-    CreateLabel(c, "Cat:", 5, -29)
+    CreateLabel(c, L.LBL_CAT or "Cat:", 5, -29)
     ddCategory = CreateFrame("Frame", "FGS_DDCategory", c, "UIDropDownMenuTemplate")
-    ddCategory:SetPoint("TOPLEFT", 38, -26)
-    UIDropDownMenu_SetWidth(ddCategory, 134)
+    ddCategory:SetPoint("TOPLEFT", 48, -26)
+    UIDropDownMenu_SetWidth(ddCategory, 124)
     UIDropDownMenu_Initialize(ddCategory, function()
+        local anyEquip = L.OPT_ANY_EQUIP or "Any Equipment"
+        local anyText = L.OPT_ANY or "Any"
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
-        info.text = "Any Equipment"
+        info.text = anyEquip
         info.func = function()
             currentClassID = nil
             currentSubClassID = nil
             currentInvTypeFilter = ""
-            UIDropDownMenu_SetText(ddCategory, "Any Equipment")
-            UIDropDownMenu_SetText(ddSubtype, "Any")
-            UIDropDownMenu_SetText(ddSlot, "Any")
+            UIDropDownMenu_SetText(ddCategory, anyEquip)
+            UIDropDownMenu_SetText(ddSubtype, anyText)
+            UIDropDownMenu_SetText(ddSlot, anyText)
             UpdateContextualFilters()
             CloseDropDownMenus()
         end
@@ -605,8 +584,8 @@ local function CreateTypeFilters(parent)
                     currentSubClassID = nil
                     currentInvTypeFilter = ""
                     UIDropDownMenu_SetText(ddCategory, className)
-                    UIDropDownMenu_SetText(ddSubtype, "Any")
-                    UIDropDownMenu_SetText(ddSlot, "Any")
+                    UIDropDownMenu_SetText(ddSubtype, anyText)
+                    UIDropDownMenu_SetText(ddSlot, anyText)
                     UpdateContextualFilters()
                     CloseDropDownMenus()
                 end
@@ -614,22 +593,23 @@ local function CreateTypeFilters(parent)
             end
         end
     end)
-    UIDropDownMenu_SetText(ddCategory, "Any Equipment")
+    UIDropDownMenu_SetText(ddCategory, L.OPT_ANY_EQUIP or "Any Equipment")
 
     -- Subcategory
-    CreateLabel(c, "Sub:", 5, -54)
+    CreateLabel(c, L.LBL_SUB or "Sub:", 5, -54)
     ddSubtype = CreateFrame("Frame", "FGS_DDSubtype", c, "UIDropDownMenuTemplate")
-    ddSubtype:SetPoint("TOPLEFT", 38, -51)
-    UIDropDownMenu_SetWidth(ddSubtype, 134)
+    ddSubtype:SetPoint("TOPLEFT", 48, -51)
+    UIDropDownMenu_SetWidth(ddSubtype, 124)
     UIDropDownMenu_Initialize(ddSubtype, function()
+        local anyText = L.OPT_ANY or "Any"
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
-        info.text = "Any"
+        info.text = anyText
         info.func = function()
             currentSubClassID = nil
             currentInvTypeFilter = ""
-            UIDropDownMenu_SetText(ddSubtype, "Any")
-            UIDropDownMenu_SetText(ddSlot, "Any")
+            UIDropDownMenu_SetText(ddSubtype, anyText)
+            UIDropDownMenu_SetText(ddSlot, anyText)
             CloseDropDownMenus()
         end
         UIDropDownMenu_AddButton(info)
@@ -646,7 +626,7 @@ local function CreateTypeFilters(parent)
                         currentSubClassID = subID
                         currentInvTypeFilter = ""
                         UIDropDownMenu_SetText(ddSubtype, subName)
-                        UIDropDownMenu_SetText(ddSlot, "Any")
+                        UIDropDownMenu_SetText(ddSlot, anyText)
                         CloseDropDownMenus()
                     end
                     UIDropDownMenu_AddButton(inf)
@@ -654,66 +634,69 @@ local function CreateTypeFilters(parent)
             end
         end
     end)
-    UIDropDownMenu_SetText(ddSubtype, "Any")
+    UIDropDownMenu_SetText(ddSubtype, L.OPT_ANY or "Any")
 
     -- Slot
-    CreateLabel(c, "Slot:", 5, -79)
+    CreateLabel(c, L.LBL_SLOT or "Slot:", 5, -79)
     ddSlot = CreateFrame("Frame", "FGS_DDSlot", c, "UIDropDownMenuTemplate")
-    ddSlot:SetPoint("TOPLEFT", 38, -76)
-    UIDropDownMenu_SetWidth(ddSlot, 134)
+    ddSlot:SetPoint("TOPLEFT", 48, -76)
+    UIDropDownMenu_SetWidth(ddSlot, 124)
     UIDropDownMenu_Initialize(ddSlot, function()
+        local anyText = L.OPT_ANY or "Any"
         local info = UIDropDownMenu_CreateInfo()
         info.notCheckable = true
-        info.text = "Any"
+        info.text = anyText
         info.func = function()
             currentInvTypeFilter = ""
-            UIDropDownMenu_SetText(ddSlot, "Any")
+            UIDropDownMenu_SetText(ddSlot, anyText)
             CloseDropDownMenus()
         end
         UIDropDownMenu_AddButton(info)
 
         local slots = GetSlotsForCurrentCategory()
         for _, slot in ipairs(slots) do
+            local slotLabel = GetSlotLabel(slot.invtype)
             local inf = UIDropDownMenu_CreateInfo()
             inf.notCheckable = true
-            inf.text = slot.text
+            inf.text = slotLabel
             inf.func = function()
                 currentInvTypeFilter = slot.invtype
-                UIDropDownMenu_SetText(ddSlot, slot.text)
+                UIDropDownMenu_SetText(ddSlot, slotLabel)
                 CloseDropDownMenus()
             end
             UIDropDownMenu_AddButton(inf)
         end
     end)
-    UIDropDownMenu_SetText(ddSlot, "Any")
+    UIDropDownMenu_SetText(ddSlot, L.OPT_ANY or "Any")
 end
 
 local function CreateWeaponFilters(parent)
-    local c, sec = CreateCollapsibleSection(parent, "Weapon Filters", 78, true)
+    local c, sec = CreateCollapsibleSection(parent, L.SEC_WEAPON or "Weapon Filters", 78, true)
     sec.id = "WEAPON"
-    CreateLabel(c, "Damage:", 5, -4)
-    editWeaponMin = CreateCleanEditBox(c, 40, 20, "Min"); editWeaponMin:GetParent():SetPoint("TOPLEFT", 65, -1)
-    CreateLabel(c, "–", 110, -4)
-    editWeaponMax = CreateCleanEditBox(c, 40, 20, "Max"); editWeaponMax:GetParent():SetPoint("TOPLEFT", 120, -1)
+    local phMin, phMax = L.PH_MIN or "Min", L.PH_MAX or "Max"
+    CreateLabel(c, L.LBL_DAMAGE or "Damage:", 5, -4)
+    editWeaponMin = CreateCleanEditBox(c, 40, 20, phMin); editWeaponMin:GetParent():SetPoint("TOPLEFT", 70, -1)
+    CreateLabel(c, "–", 114, -4)
+    editWeaponMax = CreateCleanEditBox(c, 40, 20, phMax); editWeaponMax:GetParent():SetPoint("TOPLEFT", 124, -1)
 
-    CreateLabel(c, "DPS:", 5, -30)
-    editDpsMin = CreateCleanEditBox(c, 40, 20, "Min"); editDpsMin:GetParent():SetPoint("TOPLEFT", 65, -27)
-    CreateLabel(c, "–", 110, -30)
-    editDpsMax = CreateCleanEditBox(c, 40, 20, "Max"); editDpsMax:GetParent():SetPoint("TOPLEFT", 120, -27)
+    CreateLabel(c, L.LBL_DPS or "DPS:", 5, -30)
+    editDpsMin = CreateCleanEditBox(c, 40, 20, phMin); editDpsMin:GetParent():SetPoint("TOPLEFT", 70, -27)
+    CreateLabel(c, "–", 114, -30)
+    editDpsMax = CreateCleanEditBox(c, 40, 20, phMax); editDpsMax:GetParent():SetPoint("TOPLEFT", 124, -27)
 
-    CreateLabel(c, "Speed:", 5, -56)
-    editSpeedMin = CreateCleanEditBox(c, 40, 20, "Min"); editSpeedMin:GetParent():SetPoint("TOPLEFT", 65, -53)
-    CreateLabel(c, "–", 110, -56)
-    editSpeedMax = CreateCleanEditBox(c, 40, 20, "Max"); editSpeedMax:GetParent():SetPoint("TOPLEFT", 120, -53)
+    CreateLabel(c, L.LBL_SPEED or "Speed:", 5, -56)
+    editSpeedMin = CreateCleanEditBox(c, 40, 20, phMin); editSpeedMin:GetParent():SetPoint("TOPLEFT", 70, -53)
+    CreateLabel(c, "–", 114, -56)
+    editSpeedMax = CreateCleanEditBox(c, 40, 20, phMax); editSpeedMax:GetParent():SetPoint("TOPLEFT", 124, -53)
 end
 
 local function CreateArmorFilters(parent)
-    local c, sec = CreateCollapsibleSection(parent, "Armour Filters", 28, true)
+    local c, sec = CreateCollapsibleSection(parent, L.SEC_ARMOR or "Armour Filters", 28, true)
     sec.id = "ARMOR"
-    CreateLabel(c, "Armour:", 5, -4)
-    editArmorMin = CreateCleanEditBox(c, 40, 20, "Min"); editArmorMin:GetParent():SetPoint("TOPLEFT", 65, -1)
-    CreateLabel(c, "–", 110, -4)
-    editArmorMax = CreateCleanEditBox(c, 40, 20, "Max"); editArmorMax:GetParent():SetPoint("TOPLEFT", 120, -1)
+    CreateLabel(c, L.LBL_ARMOR or "Armour:", 5, -4)
+    editArmorMin = CreateCleanEditBox(c, 40, 20, L.PH_MIN or "Min"); editArmorMin:GetParent():SetPoint("TOPLEFT", 70, -1)
+    CreateLabel(c, "–", 114, -4)
+    editArmorMax = CreateCleanEditBox(c, 40, 20, L.PH_MAX or "Max"); editArmorMax:GetParent():SetPoint("TOPLEFT", 124, -1)
 end
 
 local function CreateCoinEditBox(parent, x, y, width, maxLetters, atlasName, fallbackTex)
@@ -735,13 +718,13 @@ end
 
 local function CreateRequirements(parent)
     local hasPawn = AGS.HasPawn and AGS:HasPawn()
-    local c = CreateCollapsibleSection(parent, "Level & Price", hasPawn and 118 or 74)
-    CreateLabel(c, "Req Level:", 5, -4)
-    editReqLevelMin = CreateCleanEditBox(c, 40, 20, "Min"); editReqLevelMin:GetParent():SetPoint("TOPLEFT", 70, -1)
+    local c = CreateCollapsibleSection(parent, L.SEC_REQ or "Level & Price", hasPawn and 118 or 74)
+    CreateLabel(c, L.LBL_REQ_LEVEL or "Req Level:", 5, -4)
+    editReqLevelMin = CreateCleanEditBox(c, 40, 20, L.PH_MIN or "Min"); editReqLevelMin:GetParent():SetPoint("TOPLEFT", 70, -1)
     CreateLabel(c, "–", 114, -4)
-    editReqLevelMax = CreateCleanEditBox(c, 40, 20, "Max"); editReqLevelMax:GetParent():SetPoint("TOPLEFT", 124, -1)
+    editReqLevelMax = CreateCleanEditBox(c, 40, 20, L.PH_MAX or "Max"); editReqLevelMax:GetParent():SetPoint("TOPLEFT", 124, -1)
 
-    CreateLabel(c, "Max price:", 5, -30)
+    CreateLabel(c, L.LBL_MAX_PRICE or "Max price:", 5, -30)
     editBuyoutGold   = CreateCoinEditBox(c, 68,  -27, 48, 6, "auctionhouse-icon-coin-gold",   "Interface\\MoneyFrame\\UI-GoldIcon")
     editBuyoutSilver = CreateCoinEditBox(c, 119, -27, 38, 2, "auctionhouse-icon-coin-silver", "Interface\\MoneyFrame\\UI-SilverIcon")
     editBuyoutCopper = CreateCoinEditBox(c, 160, -27, 38, 2, "auctionhouse-icon-coin-copper", "Interface\\MoneyFrame\\UI-CopperIcon")
@@ -752,7 +735,7 @@ local function CreateRequirements(parent)
     checkUsableOnly:SetChecked(false)
     local usableTxt = checkUsableOnly.Text or _G[checkUsableOnly:GetName().."Text"]
     if usableTxt then
-        usableTxt:SetText("Usable Only")
+        usableTxt:SetText(L.CHK_USABLE or "Usable Only")
         usableTxt:SetFontObject("GameFontHighlightSmall")
     end
 
@@ -763,21 +746,22 @@ local function CreateRequirements(parent)
         checkPawnUpgrades:SetChecked(false)
         local pawnTxt = checkPawnUpgrades.Text or _G[checkPawnUpgrades:GetName().."Text"]
         if pawnTxt then
-            pawnTxt:SetText("|cFFb4fe2cPawn Upgrades Only|r")
+            pawnTxt:SetText("|cFFb4fe2c" .. (L.CHK_PAWN or "Pawn Upgrades Only") .. "|r")
             pawnTxt:SetFontObject("GameFontHighlightSmall")
         end
 
-        CreateLabel(c, "Spec:", 5, -98)
+        CreateLabel(c, L.LBL_SPEC or "Spec:", 5, -98)
         ddPawnSpec = CreateFrame("Frame", "FGS_DDPawnSpec", c, "UIDropDownMenuTemplate")
-        ddPawnSpec:SetPoint("TOPLEFT", 35, -94)
+        ddPawnSpec:SetPoint("TOPLEFT", 38, -94)
         UIDropDownMenu_SetWidth(ddPawnSpec, 134)
         UIDropDownMenu_Initialize(ddPawnSpec, function()
+            local anyBest = L.OPT_ANY_BEST or "Any (Best)"
             local info = UIDropDownMenu_CreateInfo()
             info.notCheckable = true
-            info.text = "Any (Best)"
+            info.text = anyBest
             info.func = function()
                 currentPawnScale = nil
-                UIDropDownMenu_SetText(ddPawnSpec, "Any (Best)")
+                UIDropDownMenu_SetText(ddPawnSpec, anyBest)
                 if AGS.SetPawnScale then AGS:SetPawnScale(nil) end
                 CloseDropDownMenus()
             end
@@ -798,7 +782,7 @@ local function CreateRequirements(parent)
                 UIDropDownMenu_AddButton(inf)
             end
         end)
-        UIDropDownMenu_SetText(ddPawnSpec, "Any (Best)")
+        UIDropDownMenu_SetText(ddPawnSpec, L.OPT_ANY_BEST or "Any (Best)")
     end
 end
 
@@ -825,7 +809,7 @@ local function AddStatFilterRow(statText, minVal, maxVal)
     local row = CreateFrame("Frame", nil, statContainer)
     row:SetSize(220, 22)
 
-    local editStat = CreateCleanEditBox(row, 96, 20, "Stat...")
+    local editStat = CreateCleanEditBox(row, 96, 20, L.PH_STAT or "Stat...")
     editStat:GetParent():SetPoint("TOPLEFT", 0, 0)
     local prevFocusGained = editStat:GetScript("OnEditFocusGained")
     editStat:SetScript("OnEditFocusGained", function(self)
@@ -841,11 +825,11 @@ local function AddStatFilterRow(statText, minVal, maxVal)
     end)
     editStat:SetText(statText or "")
 
-    local editMin = CreateCleanEditBox(row, 34, 20, "Min")
+    local editMin = CreateCleanEditBox(row, 34, 20, L.PH_MIN or "Min")
     editMin:GetParent():SetPoint("TOPLEFT", 100, 0)
     editMin:SetText(minVal or "")
 
-    local editMax = CreateCleanEditBox(row, 34, 20, "Max")
+    local editMax = CreateCleanEditBox(row, 34, 20, L.PH_MAX or "Max")
     editMax:GetParent():SetPoint("TOPLEFT", 138, 0)
     editMax:SetText(maxVal or "")
 
@@ -889,12 +873,12 @@ local function FocusOrAddStatFilter(statLabel)
 end
 
 local function CreateStatFilters(parent)
-    local c = CreateCollapsibleSection(parent, "Stat Filters", 60)
+    local c = CreateCollapsibleSection(parent, L.SEC_STATS or "Stat Filters", 60)
 
     local btnAdd = CreateFrame("Button", nil, c, "UIPanelButtonTemplate")
-    btnAdd:SetSize(120, 22)
+    btnAdd:SetSize(145, 22)
     btnAdd:SetPoint("TOPLEFT", 5, -5)
-    btnAdd:SetText("+ Add Stat Filter")
+    btnAdd:SetText(L.BTN_ADD_STAT or "+ Add Stat Filter")
     btnAdd:SetScript("OnClick", function() AddStatFilterRow() end)
 
     statContainer = CreateFrame("Frame", nil, c)
@@ -907,10 +891,10 @@ end
 -- Clear / Sync
 ---------------------------------------------------------------------------
 local function ClearFilters()
-    currentQuality = 0; UIDropDownMenu_SetText(ddQuality, "Any")
-    currentClassID = nil; UIDropDownMenu_SetText(ddCategory, "Any Equipment")
-    currentSubClassID = nil; UIDropDownMenu_SetText(ddSubtype, "Any")
-    currentInvTypeFilter = ""; UIDropDownMenu_SetText(ddSlot, "Any")
+    currentQuality = 0; UIDropDownMenu_SetText(ddQuality, L.OPT_ANY or "Any")
+    currentClassID = nil; UIDropDownMenu_SetText(ddCategory, L.OPT_ANY_EQUIP or "Any Equipment")
+    currentSubClassID = nil; UIDropDownMenu_SetText(ddSubtype, L.OPT_ANY or "Any")
+    currentInvTypeFilter = ""; UIDropDownMenu_SetText(ddSlot, L.OPT_ANY or "Any")
 
     editWeaponMin:SetText(""); editWeaponMax:SetText("")
     editDpsMin:SetText(""); editDpsMax:SetText("")
@@ -923,7 +907,7 @@ local function ClearFilters()
     checkUsableOnly:SetChecked(false)
     if checkPawnUpgrades then checkPawnUpgrades:SetChecked(false) end
     currentPawnScale = nil
-    if ddPawnSpec then UIDropDownMenu_SetText(ddPawnSpec, "Any (Best)") end
+    if ddPawnSpec then UIDropDownMenu_SetText(ddPawnSpec, L.OPT_ANY_BEST or "Any (Best)") end
     if AGS.SetPawnScale then AGS:SetPawnScale(nil) end
 
     for _, row in ipairs(statFilterRows) do
@@ -940,7 +924,9 @@ end
 local function SyncFiltersFromUI()
     local function getVal(edit)
         local t = edit:GetText()
-        return (t and t ~= "") and (tonumber(t) or 0) or 0
+        if not t or t == "" then return 0 end
+        if AGS.ParseNumber then return AGS.ParseNumber(t, true) end
+        return tonumber(t) or 0
     end
 
     local fl = AGS.Filters
@@ -1040,17 +1026,17 @@ local function CreateItemCard(parent)
     card.pawnBadge:SetScript("OnEnter", function(self)
         if not self.item then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Pawn Upgrade" .. (self.item.pawnScale and (" – " .. self.item.pawnScale) or ""), 0.71, 1, 0.17)
+        GameTooltip:SetText((L.TT_PAWN_TITLE or "Pawn Upgrade") .. (self.item.pawnScale and (" – " .. self.item.pawnScale) or ""), 0.71, 1, 0.17)
         if self.item.pawnUpgrade >= 9999 then
-            GameTooltip:AddLine("Direct upgrade (empty or 0-score slot)", 1, 1, 1)
+            GameTooltip:AddLine(L.TT_PAWN_DIRECT or "Direct upgrade (empty or 0-score slot)", 1, 1, 1)
         else
-            GameTooltip:AddLine(string.format("+%.1f%% score increase", self.item.pawnUpgrade), 1, 1, 1)
+            GameTooltip:AddLine(string.format(L.TT_PAWN_PCT or "+%.1f%% score increase", self.item.pawnUpgrade), 1, 1, 1)
         end
         local existingLabel = FormatExistingItemLabel(self.item.pawnExisting)
         if existingLabel then
-            GameTooltip:AddLine("Replaces: " .. existingLabel, 0.8, 0.8, 0.8)
+            GameTooltip:AddLine(string.format(L.TT_PAWN_REPLACES or "Replaces: %s", existingLabel), 0.8, 0.8, 0.8)
         end
-        GameTooltip:AddLine("Click to sort by Pawn upgrade", 0.6, 0.6, 0.6)
+        GameTooltip:AddLine(L.TT_PAWN_SORT_HINT or "Click to sort by Pawn upgrade", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
     card.pawnBadge:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1083,7 +1069,7 @@ local function CreateItemCard(parent)
     card.buyBtn = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
     card.buyBtn:SetSize(80, 22)
     card.buyBtn:SetPoint("BOTTOMRIGHT", -10, 8)
-    card.buyBtn:SetText("Buyout")
+    card.buyBtn:SetText(L.BTN_BUYOUT or "Buyout")
 
     return card
 end
@@ -1131,9 +1117,9 @@ local function AddCardPill(container, state, label, sortKey, filterLabel, tr, tg
         pill:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(filterLabel or sortKey, 1, 0.82, 0)
-            GameTooltip:AddLine("Left-click: Sort by " .. (filterLabel or sortKey), 0.8, 0.8, 0.8)
+            GameTooltip:AddLine(string.format(L.TT_PILL_SORT or "Left-click: Sort by %s", filterLabel or sortKey), 0.8, 0.8, 0.8)
             if filterLabel then
-                GameTooltip:AddLine("Right-click: Add filter for " .. filterLabel, 0.6, 1, 0.6)
+                GameTooltip:AddLine(string.format(L.TT_PILL_FILTER or "Right-click: Add filter for %s", filterLabel), 0.6, 1, 0.6)
             end
             GameTooltip:Show()
         end)
@@ -1210,7 +1196,7 @@ local function PopulateCard(card, item)
         card.nameText:SetWidth(maxNameW)
     end
 
-    local slotDisplayName = INVTYPE_NAMES[item.equipSlot] or item.equipSlot or ""
+    local slotDisplayName = GetSlotLabel(item.equipSlot)
     local subTypeText = item.itemSubType or ""
     if u and u.subType and subTypeText ~= "" then
         subTypeText = "|cFFFF4040" .. subTypeText .. "|r"
@@ -1222,7 +1208,7 @@ local function PopulateCard(card, item)
     end
     local reqStr = ""
     if item.reqLevel and item.reqLevel > 0 then
-        local lvlLabel = "Req Lvl " .. item.reqLevel
+        local lvlLabel = string.format(L.REQ_LVL_SHORT or "Req Lvl %d", item.reqLevel)
         if u and u.level then
             lvlLabel = "|cFFFF4040" .. lvlLabel .. "|r"
         end
@@ -1234,8 +1220,12 @@ local function PopulateCard(card, item)
 
     local baseStats = ""
     if item.parsed then
-        if item.parsed.armor and item.parsed.armor > 0 then baseStats = baseStats .. item.parsed.armor .. " Armor  " end
-        if item.parsed.block and item.parsed.block > 0 then baseStats = baseStats .. item.parsed.block .. " Block  " end
+        if item.parsed.armor and item.parsed.armor > 0 then
+            baseStats = baseStats .. string.format(L.ARMOR_INLINE or "%d Armor", item.parsed.armor) .. "  "
+        end
+        if item.parsed.block and item.parsed.block > 0 then
+            baseStats = baseStats .. string.format(L.BLOCK_INLINE or "%d Block", item.parsed.block) .. "  "
+        end
     end
     card.pillContainer:ClearAllPoints()
     if baseStats ~= "" then
@@ -1259,16 +1249,16 @@ local function PopulateCard(card, item)
 
     if item.parsed then
         if item.parsed.dmgMin and item.parsed.dmgMin > 0 then
-            AddCardPill(card.pillContainer, pillState, "Min Dmg " .. item.parsed.dmgMin, "min damage", "Min Damage")
+            AddCardPill(card.pillContainer, pillState, string.format(L.CARD_MIN_DMG or "Min Dmg %s", item.parsed.dmgMin), "min damage", GetStatDisplayName("min damage"))
         end
         if item.parsed.dmgMax and item.parsed.dmgMax > 0 then
-            AddCardPill(card.pillContainer, pillState, "Max Dmg " .. item.parsed.dmgMax, "max damage", "Max Damage")
+            AddCardPill(card.pillContainer, pillState, string.format(L.CARD_MAX_DMG or "Max Dmg %s", item.parsed.dmgMax), "max damage", GetStatDisplayName("max damage"))
         end
         if item.parsed.dps and item.parsed.dps > 0 then
-            AddCardPill(card.pillContainer, pillState, item.parsed.dps .. " DPS", "dps", "DPS")
+            AddCardPill(card.pillContainer, pillState, string.format(L.CARD_DPS or "%s DPS", item.parsed.dps), "dps", GetStatDisplayName("dps"))
         end
         if item.parsed.speed and item.parsed.speed > 0 then
-            AddCardPill(card.pillContainer, pillState, "Speed " .. item.parsed.speed, "speed", "Speed")
+            AddCardPill(card.pillContainer, pillState, string.format(L.CARD_SPEED or "Speed %s", item.parsed.speed), "speed", GetStatDisplayName("speed"))
         end
     end
 
@@ -1286,11 +1276,11 @@ local function PopulateCard(card, item)
     end
 
     card.priceText:SetText(FormatMoney(item.buyoutPrice))
-    card.qtyText:SetText((item.totalQuantity or 1) .. " available")
+    card.qtyText:SetText(string.format(L.QTY_AVAILABLE or "%d available", item.totalQuantity or 1))
     local rightColW = math.max(card.priceText:GetStringWidth() or 0, card.qtyText:GetStringWidth() or 0) + 20
     card.typeText:SetPoint("RIGHT", card, "RIGHT", -math.max(78, rightColW), 0)
 
-    card.buyBtn:SetText(item.readyAuctionID and "|cFF00FF00Confirm Buy|r" or "Buyout")
+    card.buyBtn:SetText(item.readyAuctionID and ("|cFF00FF00" .. (L.BTN_CONFIRM_BUY or "Confirm Buy") .. "|r") or (L.BTN_BUYOUT or "Buyout"))
     card.buyBtn:SetScript("OnClick", function()
         if AGS.QuickBuyOrInspect then
             AGS:QuickBuyOrInspect(item)
@@ -1332,12 +1322,12 @@ local function UpdateSortBar()
     if sortActiveText then
         local count = AGS.Results and #AGS.Results or 0
         local sortName
-        if AGS.SortKey == "buyout" then sortName = "Price"
-        elseif AGS.SortKey == "pawn" then sortName = "Pawn %"
-        elseif AGS.SortKey == "name" then sortName = "Name"
+        if AGS.SortKey == "buyout" then sortName = L.SORT_PRICE or "Price"
+        elseif AGS.SortKey == "pawn" then sortName = L.SORT_PAWN or "Pawn %"
+        elseif AGS.SortKey == "name" then sortName = L.SORT_NAME or "Name"
         else sortName = FormatStatLabel(AGS.SortKey or "")
         end
-        sortActiveText:SetText(string.format("%d results  •  Sort: %s%s", count, sortName, dirArrow))
+        sortActiveText:SetText(string.format(L.SORT_SUMMARY or "%d results  •  Sort: %s%s", count, sortName, dirArrow))
     end
 end
 
@@ -1350,18 +1340,18 @@ local function CreateSortBar(parent)
 
     local lbl = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     lbl:SetPoint("LEFT", 8, 0)
-    lbl:SetText("Sort:")
+    lbl:SetText(L.SORT_PREFIX or "Sort:")
 
     local defs = {
-        { key = "buyout", label = "Price" },
-        { key = "name",   label = "Name" },
+        { key = "buyout", label = L.SORT_PRICE or "Price" },
+        { key = "name",   label = L.SORT_NAME or "Name" },
     }
     if AGS.HasPawn and AGS:HasPawn() then
-        table.insert(defs, 2, { key = "pawn", label = "Pawn %" })
+        table.insert(defs, 2, { key = "pawn", label = L.SORT_PAWN or "Pawn %" })
     end
 
     sortButtons = {}
-    local x = 42
+    local x = math.max(42, (lbl:GetStringWidth() or 30) + 14)
     for _, def in ipairs(defs) do
         local btn = CreateFrame("Button", nil, bar, BACKDROP_TEMPLATE)
         btn:SetPoint("LEFT", x, 0)
@@ -1431,7 +1421,7 @@ function UI:UpdateResults()
             if AGS.IsScanning then
                 emptyText:Hide()
             else
-                emptyText:SetText(hasSearched and "No matching gear found. Try broadening your filters." or "Select filters on the left and click Search AH.")
+                emptyText:SetText(hasSearched and (L.EMPTY_NONE or "No matching gear found. Try broadening your filters.") or (L.EMPTY_INITIAL or "Select filters on the left and click Search AH."))
                 emptyText:Show()
             end
         end
@@ -1460,14 +1450,20 @@ local function AttachToAuctionHouse()
     local LibAHTab = LibStub and LibStub("LibAHTab-1-0", true)
     if LibAHTab then
         if not LibAHTab:DoesIDExist("ForeverGearScanner") then
-            LibAHTab:CreateTab("ForeverGearScanner", mainFrame, "Gear Scanner", "Forever Gear Scanner")
+            LibAHTab:CreateTab("ForeverGearScanner", mainFrame, L.TAB_SHORT or "Gear Scanner", L.TAB_HEADER or "Forever Gear Scanner")
         end
     elseif AuctionHouseFrame.Tabs then
         local numTabs = #AuctionHouseFrame.Tabs + 1
-        local tab = CreateFrame("Button", "AuctionHouseFrameTab"..numTabs, AuctionHouseFrame, "AuctionHouseFrameDisplayModeTabTemplate")
+        local prevTab = AuctionHouseFrame.Tabs[#AuctionHouseFrame.Tabs]
+        local tabName = _G["FGS_AuctionHouseTab"] and ("FGS_AuctionHouseTab" .. numTabs) or "FGS_AuctionHouseTab"
+        local tab = CreateFrame("Button", tabName, AuctionHouseFrame, "AuctionHouseFrameDisplayModeTabTemplate")
         tab:SetID(numTabs)
-        tab:SetText("Gear Scanner")
-        tab:SetPoint("LEFT", AuctionHouseFrame.Tabs[#AuctionHouseFrame.Tabs], "RIGHT", 3, 0)
+        tab:SetText(L.TAB_SHORT or "Gear Scanner")
+        if prevTab and prevTab ~= tab then
+            tab:SetPoint("LEFT", prevTab, "RIGHT", 3, 0)
+        else
+            tab:SetPoint("TOPLEFT", AuctionHouseFrame, "BOTTOMLEFT", 15, 2)
+        end
         PanelTemplates_TabResize(tab, 20, nil, 70)
         PanelTemplates_DeselectTab(tab)
 
@@ -1481,12 +1477,17 @@ local function AttachToAuctionHouse()
 
         tab:SetScript("OnClick", function()
             selectingOurTab = true
-            AuctionHouseFrame:SetDisplayMode({})
+            if AuctionHouseFrame.SetDisplayMode then
+                AuctionHouseFrame:SetDisplayMode({})
+            end
             selectingOurTab = false
             for _, t in ipairs(AuctionHouseFrame.Tabs) do
                 PanelTemplates_DeselectTab(t)
             end
             PanelTemplates_SelectTab(tab)
+            if AuctionHouseFrame.SetTitle then
+                AuctionHouseFrame:SetTitle(L.TAB_HEADER or "Forever Gear Scanner")
+            end
             mainFrame:Show()
         end)
     end
@@ -1533,9 +1534,9 @@ function UI:Initialize()
     UpdateContextualFilters()
 
     btnSearch = CreateFrame("Button", nil, leftPanel, "UIPanelButtonTemplate")
-    btnSearch:SetSize(112, 25)
+    btnSearch:SetSize(116, 25)
     btnSearch:SetPoint("BOTTOMLEFT", 10, 10)
-    btnSearch:SetText("Search AH")
+    btnSearch:SetText(L.BTN_SEARCH or "Search AH")
     btnSearch:SetScript("OnClick", function()
         hasSearched = true
         SyncFiltersFromUI()
@@ -1543,14 +1544,14 @@ function UI:Initialize()
     end)
 
     btnClear = CreateFrame("Button", nil, leftPanel, "UIPanelButtonTemplate")
-    btnClear:SetSize(112, 25)
+    btnClear:SetSize(116, 25)
     btnClear:SetPoint("BOTTOMRIGHT", -10, 10)
-    btnClear:SetText("Clear Filters")
+    btnClear:SetText(L.BTN_CLEAR or "Clear Filters")
     btnClear:SetScript("OnClick", ClearFilters)
 
     txtStatus = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     txtStatus:SetPoint("BOTTOMLEFT", mainFrame, "TOPLEFT", 5, 5)
-    txtStatus:SetText("Ready.")
+    txtStatus:SetText(L.STATUS_READY or "Ready.")
 
     CreateSortBar(rightPanel)
 
@@ -1564,7 +1565,7 @@ function UI:Initialize()
 
     emptyText = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     emptyText:SetPoint("CENTER", resultScrollChild, "CENTER", 0, 0)
-    emptyText:SetText("Select filters on the left and click Search AH.")
+    emptyText:SetText(L.EMPTY_INITIAL or "Select filters on the left and click Search AH.")
 
     resultScrollFrame = CreateFrame("ScrollFrame", "FGS_ResultScroll", resultScrollChild, "FauxScrollFrameTemplate")
     resultScrollFrame:SetPoint("TOPLEFT", 0, 0)
