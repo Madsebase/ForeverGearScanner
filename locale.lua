@@ -1133,6 +1133,20 @@ local FALLBACK_INVTYPE_NAMES = {
 function AGS.GetSlotLabel(equipSlot)
     if not equipSlot or equipSlot == "" then return "" end
     local globalName = _G[equipSlot]
+    if equipSlot == "INVTYPE_SHIELD" then
+        -- Blizzard sets both INVTYPE_SHIELD and INVTYPE_WEAPONOFFHAND to "Off Hand" on Forever/Retail;
+        -- prefer the localized Shield armor subclass name so the two slots remain distinct.
+        if type(globalName) == "string" and globalName ~= "" and globalName ~= _G["INVTYPE_WEAPONOFFHAND"] then
+            return globalName
+        end
+        if C_Item and C_Item.GetItemSubClassInfo and Enum and Enum.ItemClass and Enum.ItemArmorSubclass and Enum.ItemArmorSubclass.Shield then
+            local shieldName = C_Item.GetItemSubClassInfo(Enum.ItemClass.Armor, Enum.ItemArmorSubclass.Shield)
+            if type(shieldName) == "string" and shieldName ~= "" then
+                return shieldName
+            end
+        end
+        return FALLBACK_INVTYPE_NAMES.INVTYPE_SHIELD
+    end
     if type(globalName) == "string" and globalName ~= "" then
         return globalName
     end

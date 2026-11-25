@@ -59,6 +59,8 @@ local ARMOR_SLOTS = {
     { invtype = "INVTYPE_FINGER" },
     { invtype = "INVTYPE_TRINKET" },
     { invtype = "INVTYPE_HOLDABLE" },
+    { invtype = "INVTYPE_SHIELD" },
+    { invtype = "INVTYPE_RELIC" },
     { invtype = "INVTYPE_BODY" },
     { invtype = "INVTYPE_TABARD" },
 }
@@ -68,11 +70,82 @@ local WEAPON_SLOTS = {
     { invtype = "INVTYPE_2HWEAPON" },
     { invtype = "INVTYPE_WEAPONMAINHAND" },
     { invtype = "INVTYPE_WEAPONOFFHAND" },
-    { invtype = "INVTYPE_HOLDABLE" },
     { invtype = "INVTYPE_RANGED" },
     { invtype = "INVTYPE_THROWN" },
-    { invtype = "INVTYPE_RELIC" },
-    { invtype = "INVTYPE_SHIELD" },
+}
+
+local function MakeSlotList(...)
+    local list = {}
+    for i = 1, select("#", ...) do
+        table.insert(list, { invtype = select(i, ...) })
+    end
+    return list
+end
+
+local WEAPON_SUBCLASS_SLOTS = {}
+do
+    local WS = Enum and Enum.ItemWeaponSubclass
+    if WS then
+        local oneHanded = { "INVTYPE_WEAPON", "INVTYPE_WEAPONMAINHAND", "INVTYPE_WEAPONOFFHAND" }
+        for _, key in ipairs({ "Axe1H", "Mace1H", "Sword1H", "Dagger", "Unarmed", "Bearclaw", "Catclaw", "Warglaive" }) do
+            if WS[key] ~= nil then WEAPON_SUBCLASS_SLOTS[WS[key]] = MakeSlotList(unpack(oneHanded)) end
+        end
+        for _, key in ipairs({ "Axe2H", "Mace2H", "Polearm", "Sword2H", "Staff", "Fishingpole" }) do
+            if WS[key] ~= nil then WEAPON_SUBCLASS_SLOTS[WS[key]] = MakeSlotList("INVTYPE_2HWEAPON") end
+        end
+        for _, key in ipairs({ "Bows", "Guns", "Crossbow", "Wand" }) do
+            if WS[key] ~= nil then WEAPON_SUBCLASS_SLOTS[WS[key]] = MakeSlotList("INVTYPE_RANGED") end
+        end
+        if WS.Thrown ~= nil then WEAPON_SUBCLASS_SLOTS[WS.Thrown] = MakeSlotList("INVTYPE_THROWN") end
+    end
+end
+
+local ARMOR_SUBCLASS_SLOTS = {}
+do
+    local AS = Enum and Enum.ItemArmorSubclass
+    if AS then
+        if AS.Generic ~= nil then
+            ARMOR_SUBCLASS_SLOTS[AS.Generic] = MakeSlotList(
+                "INVTYPE_NECK", "INVTYPE_FINGER", "INVTYPE_TRINKET", "INVTYPE_HOLDABLE",
+                "INVTYPE_BODY", "INVTYPE_TABARD", "INVTYPE_HEAD", "INVTYPE_CHEST"
+            )
+        end
+        if AS.Cloth ~= nil then
+            ARMOR_SUBCLASS_SLOTS[AS.Cloth] = MakeSlotList(
+                "INVTYPE_HEAD", "INVTYPE_SHOULDER", "INVTYPE_CLOAK", "INVTYPE_CHEST",
+                "INVTYPE_WRIST", "INVTYPE_HAND", "INVTYPE_WAIST", "INVTYPE_LEGS", "INVTYPE_FEET"
+            )
+        end
+        for _, key in ipairs({ "Leather", "Mail", "Plate" }) do
+            if AS[key] ~= nil then
+                ARMOR_SUBCLASS_SLOTS[AS[key]] = MakeSlotList(
+                    "INVTYPE_HEAD", "INVTYPE_SHOULDER", "INVTYPE_CHEST",
+                    "INVTYPE_WRIST", "INVTYPE_HAND", "INVTYPE_WAIST", "INVTYPE_LEGS", "INVTYPE_FEET"
+                )
+            end
+        end
+        if AS.Cosmetic ~= nil then
+            ARMOR_SUBCLASS_SLOTS[AS.Cosmetic] = MakeSlotList(
+                "INVTYPE_HEAD", "INVTYPE_SHOULDER", "INVTYPE_CLOAK", "INVTYPE_CHEST",
+                "INVTYPE_WRIST", "INVTYPE_HAND", "INVTYPE_WAIST", "INVTYPE_LEGS",
+                "INVTYPE_FEET", "INVTYPE_BODY", "INVTYPE_TABARD"
+            )
+        end
+        if AS.Shield ~= nil then ARMOR_SUBCLASS_SLOTS[AS.Shield] = MakeSlotList("INVTYPE_SHIELD") end
+        for _, key in ipairs({ "Libram", "Idol", "Totem", "Sigil", "Relic" }) do
+            if AS[key] ~= nil then ARMOR_SUBCLASS_SLOTS[AS[key]] = MakeSlotList("INVTYPE_RELIC") end
+        end
+    end
+end
+
+local WEAPON_SLOT_SET = {
+    INVTYPE_WEAPON = true, INVTYPE_2HWEAPON = true, INVTYPE_WEAPONMAINHAND = true,
+    INVTYPE_WEAPONOFFHAND = true, INVTYPE_RANGED = true, INVTYPE_THROWN = true,
+}
+
+local ZERO_ARMOR_SLOTS = {
+    INVTYPE_NECK = true, INVTYPE_FINGER = true, INVTYPE_TRINKET = true,
+    INVTYPE_HOLDABLE = true, INVTYPE_RELIC = true, INVTYPE_BODY = true, INVTYPE_TABARD = true,
 }
 
 local PREDEFINED_STATS = {
@@ -169,6 +242,7 @@ local currentQuality = 0
 local currentClassID = nil     -- nil = Any Equipment, Enum.ItemClass.Weapon, Enum.ItemClass.Armor
 local currentSubClassID = nil
 local currentInvTypeFilter = ""
+local slotAutoSelected = false
 local currentPawnScale = nil
 
 local ddQuality, ddCategory, ddSubtype, ddSlot, ddPawnSpec
@@ -459,21 +533,31 @@ end
 -- Contextual Filter Visibility & Slots
 ---------------------------------------------------------------------------
 local function UpdateContextualFilters()
-    local showWeapon = (currentClassID == nil or currentClassID == Enum.ItemClass.Weapon)
-    local showArmor  = (currentClassID == nil or currentClassID == Enum.ItemClass.Armor)
+    local slotIsWeapon = currentInvTypeFilter ~= "" and WEAPON_SLOT_SET[currentInvTypeFilter]
+    local slotIsArmor = currentInvTypeFilter ~= "" and not WEAPON_SLOT_SET[currentInvTypeFilter]
+    local slotHasNoArmor = currentInvTypeFilter ~= "" and ZERO_ARMOR_SLOTS[currentInvTypeFilter]
+    local miscArmorSub = (currentClassID == Enum.ItemClass.Armor)
+        and (Enum.ItemArmorSubclass and currentSubClassID == Enum.ItemArmorSubclass.Generic)
+
+    local showWeapon = (currentClassID == Enum.ItemClass.Weapon) or (currentClassID == nil and not slotIsArmor)
+    local showArmor = ((currentClassID == Enum.ItemClass.Armor) or (currentClassID == nil and not slotIsWeapon))
+        and not slotHasNoArmor and not miscArmorSub
+
+    local expandWeapon = showWeapon and (currentClassID == Enum.ItemClass.Weapon or slotIsWeapon)
+    local expandArmor = showArmor and (currentClassID == Enum.ItemClass.Armor or slotIsArmor)
 
     for _, sec in ipairs(collapsibleSections) do
         if sec.id == "WEAPON" then
             if showWeapon then
                 sec.frame:Show()
-                SetSectionExpanded(sec, currentClassID == Enum.ItemClass.Weapon)
+                SetSectionExpanded(sec, expandWeapon)
             else
                 sec.frame:Hide()
             end
         elseif sec.id == "ARMOR" then
             if showArmor then
                 sec.frame:Show()
-                SetSectionExpanded(sec, currentClassID == Enum.ItemClass.Armor)
+                SetSectionExpanded(sec, expandArmor)
             else
                 sec.frame:Hide()
             end
@@ -494,19 +578,70 @@ end
 
 local function GetSlotsForCurrentCategory()
     if currentClassID == Enum.ItemClass.Weapon then
+        if currentSubClassID ~= nil and WEAPON_SUBCLASS_SLOTS[currentSubClassID] then
+            return WEAPON_SUBCLASS_SLOTS[currentSubClassID]
+        end
         return WEAPON_SLOTS
     elseif currentClassID == Enum.ItemClass.Armor then
+        if currentSubClassID ~= nil and ARMOR_SUBCLASS_SLOTS[currentSubClassID] then
+            return ARMOR_SUBCLASS_SLOTS[currentSubClassID]
+        end
         return ARMOR_SLOTS
     else
         local combined = {}
         for _, s in ipairs(ARMOR_SLOTS) do table.insert(combined, s) end
-        for _, s in ipairs(WEAPON_SLOTS) do
-            if s.invtype ~= "INVTYPE_HOLDABLE" then -- already in ARMOR_SLOTS
-                table.insert(combined, s)
-            end
-        end
+        for _, s in ipairs(WEAPON_SLOTS) do table.insert(combined, s) end
         return combined
     end
+end
+
+local function SetDropDownEnabled(dd, enabled)
+    if not dd then return end
+    if enabled and UIDropDownMenu_EnableDropDown then
+        UIDropDownMenu_EnableDropDown(dd)
+    elseif not enabled and UIDropDownMenu_DisableDropDown then
+        UIDropDownMenu_DisableDropDown(dd)
+    end
+end
+
+local function SyncCascadeControls()
+    local anyText = L.OPT_ANY or "Any"
+    if currentClassID == nil then
+        currentSubClassID = nil
+        if ddSubtype then UIDropDownMenu_SetText(ddSubtype, anyText) end
+        SetDropDownEnabled(ddSubtype, false)
+    else
+        SetDropDownEnabled(ddSubtype, true)
+        if currentSubClassID == nil and ddSubtype then
+            UIDropDownMenu_SetText(ddSubtype, anyText)
+        end
+    end
+
+    local slots = GetSlotsForCurrentCategory()
+    if #slots == 1 then
+        currentInvTypeFilter = slots[1].invtype
+        slotAutoSelected = true
+        if ddSlot then UIDropDownMenu_SetText(ddSlot, GetSlotLabel(slots[1].invtype)) end
+        SetDropDownEnabled(ddSlot, false)
+    else
+        SetDropDownEnabled(ddSlot, true)
+        local valid = false
+        if currentInvTypeFilter ~= "" and not slotAutoSelected then
+            for _, s in ipairs(slots) do
+                if s.invtype == currentInvTypeFilter then
+                    valid = true
+                    break
+                end
+            end
+        end
+        if not valid then
+            currentInvTypeFilter = ""
+            slotAutoSelected = false
+            if ddSlot then UIDropDownMenu_SetText(ddSlot, anyText) end
+        end
+    end
+
+    UpdateContextualFilters()
 end
 
 ---------------------------------------------------------------------------
@@ -563,11 +698,9 @@ local function CreateTypeFilters(parent)
         info.func = function()
             currentClassID = nil
             currentSubClassID = nil
-            currentInvTypeFilter = ""
             UIDropDownMenu_SetText(ddCategory, anyEquip)
             UIDropDownMenu_SetText(ddSubtype, anyText)
-            UIDropDownMenu_SetText(ddSlot, anyText)
-            UpdateContextualFilters()
+            SyncCascadeControls()
             CloseDropDownMenus()
         end
         UIDropDownMenu_AddButton(info)
@@ -582,11 +715,9 @@ local function CreateTypeFilters(parent)
                 inf.func = function()
                     currentClassID = classID
                     currentSubClassID = nil
-                    currentInvTypeFilter = ""
                     UIDropDownMenu_SetText(ddCategory, className)
                     UIDropDownMenu_SetText(ddSubtype, anyText)
-                    UIDropDownMenu_SetText(ddSlot, anyText)
-                    UpdateContextualFilters()
+                    SyncCascadeControls()
                     CloseDropDownMenus()
                 end
                 UIDropDownMenu_AddButton(inf)
@@ -607,9 +738,8 @@ local function CreateTypeFilters(parent)
         info.text = anyText
         info.func = function()
             currentSubClassID = nil
-            currentInvTypeFilter = ""
             UIDropDownMenu_SetText(ddSubtype, anyText)
-            UIDropDownMenu_SetText(ddSlot, anyText)
+            SyncCascadeControls()
             CloseDropDownMenus()
         end
         UIDropDownMenu_AddButton(info)
@@ -624,9 +754,8 @@ local function CreateTypeFilters(parent)
                     inf.text = subName
                     inf.func = function()
                         currentSubClassID = subID
-                        currentInvTypeFilter = ""
                         UIDropDownMenu_SetText(ddSubtype, subName)
-                        UIDropDownMenu_SetText(ddSlot, anyText)
+                        SyncCascadeControls()
                         CloseDropDownMenus()
                     end
                     UIDropDownMenu_AddButton(inf)
@@ -648,7 +777,9 @@ local function CreateTypeFilters(parent)
         info.text = anyText
         info.func = function()
             currentInvTypeFilter = ""
+            slotAutoSelected = false
             UIDropDownMenu_SetText(ddSlot, anyText)
+            UpdateContextualFilters()
             CloseDropDownMenus()
         end
         UIDropDownMenu_AddButton(info)
@@ -661,7 +792,9 @@ local function CreateTypeFilters(parent)
             inf.text = slotLabel
             inf.func = function()
                 currentInvTypeFilter = slot.invtype
+                slotAutoSelected = false
                 UIDropDownMenu_SetText(ddSlot, slotLabel)
+                UpdateContextualFilters()
                 CloseDropDownMenus()
             end
             UIDropDownMenu_AddButton(inf)
@@ -896,7 +1029,7 @@ local function ClearFilters()
     currentQuality = 0; UIDropDownMenu_SetText(ddQuality, L.OPT_ANY or "Any")
     currentClassID = nil; UIDropDownMenu_SetText(ddCategory, L.OPT_ANY_EQUIP or "Any Equipment")
     currentSubClassID = nil; UIDropDownMenu_SetText(ddSubtype, L.OPT_ANY or "Any")
-    currentInvTypeFilter = ""; UIDropDownMenu_SetText(ddSlot, L.OPT_ANY or "Any")
+    currentInvTypeFilter = ""; slotAutoSelected = false; UIDropDownMenu_SetText(ddSlot, L.OPT_ANY or "Any")
 
     editWeaponMin:SetText(""); editWeaponMax:SetText("")
     editDpsMin:SetText(""); editDpsMax:SetText("")
@@ -920,7 +1053,7 @@ local function ClearFilters()
     end
     statFilterRows = {}
     LayoutStatFilters()
-    UpdateContextualFilters()
+    SyncCascadeControls()
     if SyncFiltersFromUI then SyncFiltersFromUI() end
 end
 
@@ -1555,7 +1688,7 @@ function UI:Initialize()
     CreateStatFilters(lpScrollChild)
 
     LayoutFilterPanel()
-    UpdateContextualFilters()
+    SyncCascadeControls()
 
     btnSearch = CreateFrame("Button", nil, leftPanel, "UIPanelButtonTemplate")
     btnSearch:SetSize(124, 25)

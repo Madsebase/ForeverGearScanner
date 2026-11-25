@@ -1088,11 +1088,19 @@ local function BuildClassFilters()
             or invEnum == Enum.InventoryType.IndexFingerType
             or invEnum == Enum.InventoryType.IndexTrinketType
             or invEnum == Enum.InventoryType.IndexHoldableType
-            or invEnum == Enum.InventoryType.IndexBodyType then
+            or invEnum == Enum.InventoryType.IndexBodyType
+            or (Enum.InventoryType.IndexTabardType and invEnum == Enum.InventoryType.IndexTabardType) then
             table.insert(filters, { classID = Enum.ItemClass.Armor, subClassID = Enum.ItemArmorSubclass.Generic, inventoryType = invEnum })
             return filters
         elseif invEnum == Enum.InventoryType.IndexCloakType then
             table.insert(filters, { classID = Enum.ItemClass.Armor, subClassID = Enum.ItemArmorSubclass.Cloth, inventoryType = invEnum })
+            return filters
+        elseif Enum.InventoryType.IndexShieldType and invEnum == Enum.InventoryType.IndexShieldType then
+            local shieldSub = (Enum.ItemArmorSubclass and Enum.ItemArmorSubclass.Shield) or fl.subClassID
+            table.insert(filters, { classID = Enum.ItemClass.Armor, subClassID = shieldSub, inventoryType = invEnum })
+            return filters
+        elseif Enum.InventoryType.IndexRelicType and invEnum == Enum.InventoryType.IndexRelicType then
+            table.insert(filters, { classID = Enum.ItemClass.Armor, subClassID = fl.subClassID, inventoryType = invEnum })
             return filters
         elseif Enum.InventoryType.IndexRangedType and (invEnum == Enum.InventoryType.IndexRangedType or invEnum == Enum.InventoryType.IndexRangedrightType) then
             local weaponClass = fl.classID or Enum.ItemClass.Weapon
@@ -1120,6 +1128,9 @@ local function BuildClassFilters()
             subClassID = fl.subClassID,
             inventoryType = invEnum,
         })
+    elseif invEnum then
+        -- Head/Shoulder/Waist/Legs/Feet/Wrist/Hands slots belong exclusively to Armor
+        table.insert(filters, { classID = Enum.ItemClass.Armor, subClassID = fl.subClassID, inventoryType = invEnum })
     else
         -- Default: Both Weapons and Armor
         table.insert(filters, { classID = Enum.ItemClass.Weapon, inventoryType = invEnum })
