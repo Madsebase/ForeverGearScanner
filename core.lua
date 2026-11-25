@@ -197,7 +197,11 @@ local STAT_CANONICAL_NAMES = {
 
 local function CanonicalizeStatName(rawName)
     local lower = string.lower(CleanString(rawName or ""))
-    lower = string.gsub(lower, "[%.:：]+$", "")
+    lower = string.gsub(lower, "%.+$", "")
+    while string.sub(lower, -3) == "：" do
+        lower = string.sub(lower, 1, -4)
+    end
+    lower = string.gsub(lower, "%.+$", "")
     lower = string.gsub(lower, "^[ \t\r\n]*(.-)[ \t\r\n]*$", "%1")
     if STAT_CANONICAL_NAMES[lower] then
         return STAT_CANONICAL_NAMES[lower]
@@ -458,8 +462,20 @@ local function RebuildLocaleRules()
 
     local locData = AGS.GetLocaleTooltipData and AGS.GetLocaleTooltipData() or nil
     if locData then
-        if locData.equipPrefix then table.insert(lr.equipPrefixes, locData.equipPrefix) end
-        if locData.usePrefix then table.insert(lr.usePrefixes, locData.usePrefix) end
+        if locData.equipPrefix then
+            if type(locData.equipPrefix) == "table" then
+                for _, p in ipairs(locData.equipPrefix) do table.insert(lr.equipPrefixes, p) end
+            else
+                table.insert(lr.equipPrefixes, locData.equipPrefix)
+            end
+        end
+        if locData.usePrefix then
+            if type(locData.usePrefix) == "table" then
+                for _, p in ipairs(locData.usePrefix) do table.insert(lr.usePrefixes, p) end
+            else
+                table.insert(lr.usePrefixes, locData.usePrefix)
+            end
+        end
         if locData.procTerms then
             for _, term in ipairs(locData.procTerms) do
                 table.insert(lr.procTerms, term)
@@ -608,7 +624,10 @@ local function ParseLine(leftText, rightText, parsed)
                     local statValue, statName = string.match(strippedEquip, "^%+([%d,%.]+)%%?[ \t\r\n]*(.+)$")
                     if not statValue then
                         -- Handle reversed suffix form e.g. "Stamina +5", "체력 +5"
-                        local revName, revVal = string.match(strippedEquip, "^(.-)[ \t\r\n]*[:：]?[ \t\r\n]*%+([%d,%.]+)%%?$")
+                        local revName, revVal = string.match(strippedEquip, "^(.-)[ \t\r\n]*:?[ \t\r\n]*%+([%d,%.]+)%%?$")
+                        if revName and string.sub(revName, -3) == "：" then
+                            revName = string.gsub(string.sub(revName, 1, -4), "^[ \t\r\n]*(.-)[ \t\r\n]*$", "%1")
+                        end
                         if revName and revName ~= "" then
                             local revLower = string.lower(revName)
                             local knownAlias = STAT_CANONICAL_NAMES[revLower]
