@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.2
+
+- **Cascading Cat -> Sub -> Slot dropdowns:** Narrowed `Slot` choices dynamically to valid slots for the active `Cat` (`Weapon` / `Armor`) and `Sub` (e.g., `Plate` hides `Back` / `Neck` / `Shields`; `1H` weapons offer `Any` / `Main Hand` / `Off Hand`), auto-selected and locked `Slot` when a subcategory only has one slot (`Two-Handed Axes`, `Bows`, `Shields`, `Relic`), and cleared incompatible selections when changing category or subcategory.
+- **Complete 1H Main Hand & Off Hand AH scans:** Selecting `Main Hand` (`INVTYPE_WEAPONMAINHAND`) or `Off Hand` (`INVTYPE_WEAPONOFFHAND`) on 1-handed weapons now also queries and matches generic `One-Hand` (`INVTYPE_WEAPON`) weapons so Off Hand / Main Hand searches include shared 1H axes, maces, swords, and daggers instead of returning `0` results.
+- **Shield vs. Off Hand slot deduplication & contextual filters:** Disambiguated Blizzard's shared `"Off Hand"` label for `INVTYPE_SHIELD` using the localized `Shields` armor subclass name across all client languages, hid `Weapon Filters` when `Armor` (or an armor-only slot) is selected, and hid `Armour Filters` under `Weapon`, `Armor -> Miscellaneous`, or zero-armor slots (`Neck`, `Finger`, `Trinket`, `Held in Off-Hand`, `Relic`, `Shirt`, `Tabard`).
+
 ## v1.2.1
 
 - **More complete `One-Hand` & async AH scans:** Expanded the `One-Hand` (`INVTYPE_WEAPON`) slot filter to include `Main Hand` (`INVTYPE_WEAPONMAINHAND`) and `Off Hand` (`INVTYPE_WEAPONOFFHAND`) weapons so 1-handed caster/healing maces, daggers, and swords are no longer missed, and replaced single-frame retry with timed multi-pass `C_Item.IsItemDataCachedByID` retries so uncached items aren't silently dropped on fast scans.
