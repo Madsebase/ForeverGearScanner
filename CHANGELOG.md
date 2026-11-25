@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.1
+
+- **More complete `One-Hand` & async AH scans:** Expanded the `One-Hand` (`INVTYPE_WEAPON`) slot filter to include `Main Hand` (`INVTYPE_WEAPONMAINHAND`) and `Off Hand` (`INVTYPE_WEAPONOFFHAND`) weapons so 1-handed caster/healing maces, daggers, and swords are no longer missed, and replaced single-frame retry with timed multi-pass `C_Item.IsItemDataCachedByID` retries so uncached items aren't silently dropped on fast scans.
+- **Classic green `+Healing` / `+Spell Damage` across all 11 locales:** Added shorthand green-item aliases and dual `+Healing and +Damage` rules across `enUS`/`enGB`, `deDE`, `frFR`, `esES`/`esMX`, `ptBR`, `ruRU`, `koKR`, `zhCN`, and `zhTW` (plus expanded Italian `itIT` Classic `Equip:` coverage for hit, haste, dodge, parry, block, defense, and penetrations).
+- **Filter parsing & UI layout polish:** Treated `Req Level`, `Max price`, `Damage`, and `Armour` inputs strictly as integers so comma-thousands like `"1,200"` parse as `1200` instead of `1.2`, clamped overflowing green effect pills with ellipses (`...`) + hover tooltips, localized the zero-baseline Pawn `Upgrade` badge (`BADGE_UPGRADE`), and widened the left filter panel (`276px`) and label offsets for longer Russian/European labels.
+- **Cleanup:** Removed the unused `/fgs` / `/gearscanner` slash command and empty `ForeverGearScannerDB` boilerplate.
+
 ## v1.2.0
 
 - **All 11 official WoW languages supported:** Automatically adapts UI labels, dropdowns, sort bar, card tags, stat autocomplete, and number formatting to your `GetLocale()` client language (`enUS`/`enGB`, `deDE`, `frFR`, `esES`, `esMX`, `ptBR`, `itIT`, `ruRU`, `koKR`, `zhCN`, `zhTW`). Combines Blizzard GlobalStrings (`INVTYPE_*`, `ITEM_QUALITY*_DESC`, `ITEM_MOD_*`, `ITEM_LEVEL`, `ITEM_MIN_LEVEL`, `ARMOR_TEMPLATE`, `DAMAGE_TEMPLATE`, `SPEED`, `ITEM_SET_BONUS*`) with localized Classic/Forever `Equip:` stat parsing, including WoW Forever `ruRU` overrides, French non-breaking spaces (`\194\160`), comma decimals, and Korean/Chinese suffix stats.
