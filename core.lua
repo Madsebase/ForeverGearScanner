@@ -60,6 +60,7 @@ local scanState = {
     batchPerFrame = 20, -- C_TooltipInfo is data-only and fast
     lastRequestTime = 0,
     pendingBuyItem = nil,
+    pendingInspectItem = nil,
     pendingQuery = nil,
     pendingMore = false,
 }
@@ -430,7 +431,21 @@ local function RebuildLocaleRules()
         equipRules = {},
         allStatsPatterns = {},
         allResPatterns = {},
+        randomEnchantTexts = {
+            ["<random enchantment>"] = true,
+            ["<random additional stats>"] = true,
+        },
+        retrievingText = nil,
     }
+
+    local randEnch = _G["ITEM_RANDOM_ENCHANT"]
+    if type(randEnch) == "string" and randEnch ~= "" then
+        lr.randomEnchantTexts[string.lower(CleanString(randEnch))] = true
+    end
+    local retrInfo = _G["RETRIEVING_ITEM_INFO"]
+    if type(retrInfo) == "string" and retrInfo ~= "" then
+        lr.retrievingText = string.lower(CleanString(retrInfo))
+    end
 
     local setGrayPat = BuildPrefixRegex("ITEM_SET_BONUS_GRAY")
     if setGrayPat then table.insert(lr.setPrefixes, setGrayPat) end
@@ -550,6 +565,19 @@ local function ParseLine(leftText, rightText, parsed)
 
     if leftText ~= "" then
         local lowerLeft = string.lower(leftText)
+        local retrGlobal = _G["RETRIEVING_ITEM_INFO"]
+        if (LOCALE_RULES.retrievingText and lowerLeft == LOCALE_RULES.retrievingText)
+            or (type(retrGlobal) == "string" and retrGlobal ~= "" and lowerLeft == string.lower(CleanString(retrGlobal)))
+            or lowerLeft == "retrieving item information" then
+            parsed.isRetrieving = true
+            return
+        end
+        if LOCALE_RULES.randomEnchantTexts and LOCALE_RULES.randomEnchantTexts[lowerLeft] then
+            parsed.hasRandomEnchant = true
+            table.insert(parsed.allLines, leftText)
+            return
+        end
+
         local isSetBonus = MatchesAny(leftText, LOCALE_RULES.setPrefixes) ~= nil
             or MatchesAny(lowerLeft, LOCALE_RULES.setPrefixes) ~= nil
 
@@ -709,43 +737,37 @@ local function RecordRedTooltipText(text, isRight, parsed)
     end
 end
 
-local function ParseItemKeyTooltip(itemKey)
-    local parsed = {
+local function NewParsedRecord(ilvl)
+    return {
         armor = 0, block = 0,
         dps = 0, dmgMin = 0, dmgMax = 0, speed = 0,
-        ilvl = itemKey.itemLevel or 0, reqLevel = 0,
+        ilvl = ilvl or 0, reqLevel = 0,
         stats = {},
         effects = {},
         allLines = {},
         unusable = { level = false, subType = false, other = nil, reasons = {} },
         itemLink = nil,
+        hasRandomEnchant = false,
+        isRetrieving = false,
     }
+end
 
-    if C_TooltipInfo and C_TooltipInfo.GetItemKey then
-        local data = C_TooltipInfo.GetItemKey(itemKey.itemID, itemKey.itemLevel or 0, itemKey.itemSuffix or 0, itemKey.requiredLevel or 0)
-        if data and data.lines then
-            parsed.itemLink = data.hyperlink
-            for _, line in ipairs(data.lines) do
-                ParseLine(line.leftText, line.rightText, parsed)
-                if IsRedRGB(GetTooltipColorRGB(line.leftColor)) then
-                    RecordRedTooltipText(line.leftText, false, parsed)
-                end
-                if IsRedRGB(GetTooltipColorRGB(line.rightColor)) then
-                    RecordRedTooltipText(line.rightText, true, parsed)
-                end
-            end
-            return parsed
+local function PopulateParsedFromTooltipData(data, parsed)
+    if not data or not data.lines then return false end
+    parsed.itemLink = data.hyperlink
+    for _, line in ipairs(data.lines) do
+        ParseLine(line.leftText, line.rightText, parsed)
+        if IsRedRGB(GetTooltipColorRGB(line.leftColor)) then
+            RecordRedTooltipText(line.leftText, false, parsed)
+        end
+        if IsRedRGB(GetTooltipColorRGB(line.rightColor)) then
+            RecordRedTooltipText(line.rightText, true, parsed)
         end
     end
+    return true
+end
 
-    -- Fallback to hidden GameTooltip
-    scanTip:ClearLines()
-    scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
-    if scanTip.SetItemKey then
-        scanTip:SetItemKey(itemKey.itemID, itemKey.itemLevel or 0, itemKey.itemSuffix or 0, itemKey.requiredLevel or 0)
-    else
-        scanTip:SetItemByID(itemKey.itemID)
-    end
+local function PopulateParsedFromScanTip(parsed)
     local _, link = scanTip:GetItem()
     parsed.itemLink = link
 
@@ -762,6 +784,59 @@ local function ParseItemKeyTooltip(itemKey)
             RecordRedTooltipText(rText, true, parsed)
         end
     end
+end
+
+local function GetItemKeyRequiredLevel(itemKey)
+    if not itemKey then return 0 end
+    if itemKey.requiredLevel and itemKey.requiredLevel > 0 then
+        return itemKey.requiredLevel
+    end
+    if C_AuctionHouse and C_AuctionHouse.GetItemKeyRequiredLevel then
+        return C_AuctionHouse.GetItemKeyRequiredLevel(itemKey) or 0
+    end
+    return 0
+end
+AGS.GetItemKeyRequiredLevel = GetItemKeyRequiredLevel
+
+local function ParseItemKeyTooltip(itemKey)
+    local parsed = NewParsedRecord(itemKey.itemLevel or 0)
+    local reqLvl = GetItemKeyRequiredLevel(itemKey)
+
+    if C_TooltipInfo and C_TooltipInfo.GetItemKey then
+        local data = C_TooltipInfo.GetItemKey(itemKey.itemID, itemKey.itemLevel or 0, itemKey.itemSuffix or 0, reqLvl)
+        if PopulateParsedFromTooltipData(data, parsed) then
+            return parsed
+        end
+    end
+
+    -- Fallback to hidden GameTooltip
+    scanTip:ClearLines()
+    scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
+    if scanTip.SetItemKey then
+        scanTip:SetItemKey(itemKey.itemID, itemKey.itemLevel or 0, itemKey.itemSuffix or 0, reqLvl)
+    else
+        scanTip:SetItemByID(itemKey.itemID)
+    end
+    PopulateParsedFromScanTip(parsed)
+
+    return parsed
+end
+
+local function ParseHyperlinkTooltip(itemLink, baseIlvl)
+    local parsed = NewParsedRecord(baseIlvl or 0)
+    if not itemLink or itemLink == "" then return parsed end
+
+    if C_TooltipInfo and C_TooltipInfo.GetHyperlink then
+        local data = C_TooltipInfo.GetHyperlink(itemLink)
+        if PopulateParsedFromTooltipData(data, parsed) then
+            return parsed
+        end
+    end
+
+    scanTip:ClearLines()
+    scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
+    scanTip:SetHyperlink(itemLink)
+    PopulateParsedFromScanTip(parsed)
 
     return parsed
 end
@@ -961,6 +1036,46 @@ end
 ---------------------------------------------------------------------------
 -- Build Item Record from BrowseResultInfo
 ---------------------------------------------------------------------------
+local function BuildUnusableState(parsed, itemSubType, finalReqLevel)
+    local u = parsed.unusable or { level = false, subType = false, other = nil, reasons = {} }
+    local playerLevel = (UnitLevel and UnitLevel("player")) or 999
+    if finalReqLevel > 0 and playerLevel < finalReqLevel then
+        u.level = true
+    end
+    if u.other and itemSubType and itemSubType ~= "" and string.find(string.lower(u.other), string.lower(itemSubType), 1, true) then
+        u.subType = true
+        u.other = nil
+    end
+    u.any = (u.level or u.subType or (u.other ~= nil) or (#u.reasons > 0)) and true or false
+    return u
+end
+
+local function ApplyResolvedItemLink(item, itemLink)
+    if not item or not itemLink or itemLink == "" then return end
+    item.resolvedItemLink = itemLink
+    item.link = itemLink
+
+    local newParsed = ParseHyperlinkTooltip(itemLink, item.ilvl)
+    if newParsed and #newParsed.allLines > 0 and not newParsed.isRetrieving then
+        item.parsed = newParsed
+        if newParsed.ilvl and newParsed.ilvl > 0 then
+            item.ilvl = newParsed.ilvl
+        end
+        if newParsed.reqLevel and newParsed.reqLevel > 0 then
+            item.reqLevel = newParsed.reqLevel
+        end
+        item.unusable = BuildUnusableState(newParsed, item.itemSubType, item.reqLevel or 0)
+    end
+
+    local pawnPct, pawnScale, pawnExisting, pawnUpgrades = EvaluatePawnUpgrade(itemLink, item.itemID)
+    if pawnUpgrades then
+        item.pawnUpgrade = pawnPct
+        item.pawnScale = pawnScale
+        item.pawnExisting = pawnExisting
+        item.pawnUpgrades = pawnUpgrades
+    end
+end
+
 local function BuildBrowseItem(browseResult)
     local itemKey = browseResult.itemKey
     if not itemKey or not itemKey.itemID then return nil end
@@ -976,7 +1091,7 @@ local function BuildBrowseItem(browseResult)
     local parsed = ParseItemKeyTooltip(itemKey)
     local link = parsed.itemLink or itemLink
     local name = (keyInfo and keyInfo.itemName) or itemName
-    if not name or not isCached then
+    if not name or not isCached or parsed.isRetrieving or #parsed.allLines == 0 then
         if C_Item.RequestLoadItemDataByID then
             C_Item.RequestLoadItemDataByID(itemKey.itemID)
         end
@@ -990,17 +1105,7 @@ local function BuildBrowseItem(browseResult)
     local finalReqLevel = (parsed.reqLevel > 0 and parsed.reqLevel) or itemMinLevel or 0
 
     local pawnPct, pawnScale, pawnExisting, pawnUpgrades = EvaluatePawnUpgrade(link, itemKey.itemID)
-
-    local u = parsed.unusable or { level = false, subType = false, other = nil, reasons = {} }
-    local playerLevel = (UnitLevel and UnitLevel("player")) or 999
-    if finalReqLevel > 0 and playerLevel < finalReqLevel then
-        u.level = true
-    end
-    if u.other and itemSubType and itemSubType ~= "" and string.find(string.lower(u.other), string.lower(itemSubType), 1, true) then
-        u.subType = true
-        u.other = nil
-    end
-    u.any = (u.level or u.subType or (u.other ~= nil) or (#u.reasons > 0)) and true or false
+    local u = BuildUnusableState(parsed, itemSubType, finalReqLevel)
 
     return {
         itemKey = itemKey,
@@ -1201,6 +1306,7 @@ function AGS:StartSearch()
     scanState.retryWaitUntil = 0
     scanState.batchIndex = 0
     scanState.pendingBuyItem = nil
+    scanState.pendingInspectItem = nil
     scanState.lastQuery = nil
 
     if self.UI and self.UI.UpdateResults then
@@ -1249,6 +1355,21 @@ local function ItemKeysMatch(a, b)
     if not a or not b or a.itemID ~= b.itemID then return false end
     if (a.itemLevel or 0) ~= (b.itemLevel or 0) then return false end
     if (a.itemSuffix or 0) ~= (b.itemSuffix or 0) then return false end
+    return true
+end
+
+function AGS:InspectItem(item)
+    if not item or not item.itemKey or item.resolvedItemLink or item.inspectQueried then return false end
+    if self.IsScanning or scanState.pendingBuyItem then return false end
+    if not C_AuctionHouse or not C_AuctionHouse.SendSearchQuery then return false end
+    if AuctionHouseFrame and AuctionHouseFrame.IsShown and not AuctionHouseFrame:IsShown() then return false end
+    if not IsAHReady() then return false end
+
+    item.inspectQueried = true
+    scanState.pendingInspectItem = item
+    C_AuctionHouse.SendSearchQuery(item.itemKey, {
+        { sortOrder = Enum.AuctionHouseSortOrder.Price, reverseSort = false }
+    }, false)
     return true
 end
 
@@ -1412,6 +1533,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         scanState.pendingQuery = nil
         scanState.pendingMore = false
         scanState.pendingBuyItem = nil
+        scanState.pendingInspectItem = nil
         for _, it in ipairs(AGS.RawResults) do
             it.readyAuctionID = nil
             it.readyBuyoutAmount = nil
@@ -1451,25 +1573,43 @@ f:SetScript("OnEvent", function(self, event, ...)
         if AGS.UI then AGS.UI:SetStatus(L.STATUS_BROWSE_FAILED or "Auction House browse failed. Wait a moment and retry.") end
     elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then
         local itemKey = ...
-        local pending = scanState.pendingBuyItem
-        if pending and ItemKeysMatch(itemKey, pending.itemKey) then
-            scanState.pendingBuyItem = nil
-            local numResults = C_AuctionHouse.GetNumItemSearchResults(itemKey)
-            if numResults and numResults > 0 then
-                local info = C_AuctionHouse.GetItemSearchResultInfo(itemKey, 1)
-                if info and info.auctionID and info.buyoutAmount and info.buyoutAmount > 0 then
-                    pending.readyAuctionID = info.auctionID
-                    pending.readyBuyoutAmount = info.buyoutAmount
-                    pending.buyoutPrice = info.buyoutAmount
-                    if AGS.UI then
-                        AGS.UI:SetStatus(string.format(L.STATUS_READY_CONFIRM or "Cheapest listing ready (%s). Click 'Confirm Buy' to purchase %s.", GetMoneyString(info.buyoutAmount, true), pending.link or pending.name))
-                        if AGS.UI.UpdateResults then AGS.UI:UpdateResults() end
-                    end
-                    return
+        local pendingBuy = scanState.pendingBuyItem
+        local pendingInspect = scanState.pendingInspectItem
+        local buyMatches = pendingBuy and ItemKeysMatch(itemKey, pendingBuy.itemKey)
+        local inspectMatches = pendingInspect and ItemKeysMatch(itemKey, pendingInspect.itemKey)
+
+        local numResults = (buyMatches or inspectMatches) and C_AuctionHouse.GetNumItemSearchResults(itemKey) or 0
+        local firstInfo = (numResults and numResults > 0) and C_AuctionHouse.GetItemSearchResultInfo(itemKey, 1) or nil
+
+        if inspectMatches then
+            scanState.pendingInspectItem = nil
+            if firstInfo and firstInfo.itemLink then
+                ApplyResolvedItemLink(pendingInspect, firstInfo.itemLink)
+                if AGS.UI then
+                    if AGS.UI.UpdateResults then AGS.UI:UpdateResults() end
+                    if AGS.UI.RefreshTooltipForItem then AGS.UI:RefreshTooltipForItem(pendingInspect) end
                 end
             end
+        end
+
+        if buyMatches then
+            scanState.pendingBuyItem = nil
+            if firstInfo and firstInfo.itemLink then
+                ApplyResolvedItemLink(pendingBuy, firstInfo.itemLink)
+            end
+            if firstInfo and firstInfo.auctionID and firstInfo.buyoutAmount and firstInfo.buyoutAmount > 0 then
+                pendingBuy.readyAuctionID = firstInfo.auctionID
+                pendingBuy.readyBuyoutAmount = firstInfo.buyoutAmount
+                pendingBuy.buyoutPrice = firstInfo.buyoutAmount
+                if AGS.UI then
+                    AGS.UI:SetStatus(string.format(L.STATUS_READY_CONFIRM or "Cheapest listing ready (%s). Click 'Confirm Buy' to purchase %s.", GetMoneyString(firstInfo.buyoutAmount, true), pendingBuy.link or pendingBuy.name))
+                    if AGS.UI.UpdateResults then AGS.UI:UpdateResults() end
+                    if AGS.UI.RefreshTooltipForItem then AGS.UI:RefreshTooltipForItem(pendingBuy) end
+                end
+                return
+            end
             if AGS.UI then
-                AGS.UI:SetStatus(string.format(L.STATUS_NO_BUYOUT or "No active buyout listing found for %s.", pending.link or pending.name))
+                AGS.UI:SetStatus(string.format(L.STATUS_NO_BUYOUT or "No active buyout listing found for %s.", pendingBuy.link or pendingBuy.name))
             end
         end
     end

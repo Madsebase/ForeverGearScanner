@@ -255,6 +255,7 @@ local statContainer
 local sortBar, sortActiveText, emptyText
 local sortButtons = {}
 local hasSearched = false
+local hoveredIconBtn, hoveredCard
 
 ---------------------------------------------------------------------------
 -- Autocomplete Popup
@@ -1110,6 +1111,17 @@ local CARD_HEIGHT = 96
 local resultScrollFrame
 local resultScrollChild
 
+local function NeedsStatsInspect(item)
+    if not item or not item.itemKey or item.resolvedItemLink then return false end
+    local p = item.parsed
+    if p and p.hasRandomEnchant then return true end
+    local missingStats = not p or (next(p.stats) == nil and #p.effects == 0)
+    if missingStats and ((item.itemKey.itemSuffix and item.itemKey.itemSuffix ~= 0) or (item.quality or 0) >= 2) then
+        return true
+    end
+    return false
+end
+
 local function CreateItemCard(parent)
     local card = CreateFrame("Frame", nil, parent, BACKDROP_TEMPLATE)
     card:SetSize(parent:GetWidth() - 15, CARD_HEIGHT - 5)
@@ -1130,15 +1142,39 @@ local function CreateItemCard(parent)
     card.iconBtn = iconBtn
 
     iconBtn:SetScript("OnEnter", function(self)
+        hoveredIconBtn = self
+        hoveredCard = card
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        if card.itemKey and GameTooltip.SetItemKey then
-            GameTooltip:SetItemKey(card.itemKey.itemID, card.itemKey.itemLevel or 0, card.itemKey.itemSuffix or 0, card.itemKey.requiredLevel or 0)
+        local item = card.item
+        if item and item.resolvedItemLink then
+            GameTooltip:SetHyperlink(item.resolvedItemLink)
+        elseif card.itemKey and GameTooltip.SetItemKey then
+            local reqLvl = AGS.GetItemKeyRequiredLevel and AGS.GetItemKeyRequiredLevel(card.itemKey) or (card.itemKey.requiredLevel or 0)
+            GameTooltip:SetItemKey(card.itemKey.itemID, card.itemKey.itemLevel or 0, card.itemKey.itemSuffix or 0, reqLvl)
+            if NeedsStatsInspect(item) and not item.inspectQueried and C_AuctionHouse and C_AuctionHouse.SendSearchQuery then
+                GameTooltip:AddLine(L.TT_LOADING_STATS or "Loading item stats...", 0.6, 0.8, 1)
+                if C_Timer and C_Timer.After then
+                    C_Timer.After(0.12, function()
+                        if hoveredIconBtn == self and card:IsShown() and card.item == item and AGS.InspectItem then
+                            AGS:InspectItem(item)
+                        end
+                    end)
+                elseif AGS.InspectItem then
+                    AGS:InspectItem(item)
+                end
+            end
         elseif card.itemLink then
             GameTooltip:SetHyperlink(card.itemLink)
         end
         GameTooltip:Show()
     end)
-    iconBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    iconBtn:SetScript("OnLeave", function(self)
+        if hoveredIconBtn == self then
+            hoveredIconBtn = nil
+            hoveredCard = nil
+        end
+        GameTooltip:Hide()
+    end)
     iconBtn:SetScript("OnClick", function()
         if card.itemLink and string.find(card.itemLink, "|H", 1, true) and IsModifiedClick() then
             HandleModifiedItemClick(card.itemLink)
@@ -1306,10 +1342,12 @@ end
 
 local function PopulateCard(card, item)
     if not item then
+        card.item = nil
         card:Hide()
         return
     end
 
+    card.item = item
     card.itemLink = item.link
     card.itemKey = item.itemKey
     card.iconTex:SetTexture(item.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -1430,6 +1468,10 @@ local function PopulateCard(card, item)
         for _, eff in ipairs(item.parsed.effects) do
             AddCardPill(card.pillContainer, pillState, eff, nil, nil, 0.2, 1, 0.2)
         end
+    end
+
+    if pillState.pIdx == 1 and NeedsStatsInspect(item) then
+        AddCardPill(card.pillContainer, pillState, L.CARD_RANDOM_STATS or "Stats on hover", nil, nil, 0.7, 0.7, 0.7)
     end
 
     card.priceText:SetText(FormatMoney(item.buyoutPrice))
@@ -1590,6 +1632,15 @@ end
 
 function UI:SetStatus(text)
     if txtStatus then txtStatus:SetText(text) end
+end
+
+function UI:RefreshTooltipForItem(item)
+    if not item or not item.resolvedItemLink or not hoveredIconBtn or not hoveredCard then return end
+    if hoveredCard:IsShown() and hoveredCard.item == item then
+        GameTooltip:SetOwner(hoveredIconBtn, "ANCHOR_RIGHT")
+        GameTooltip:SetHyperlink(item.resolvedItemLink)
+        GameTooltip:Show()
+    end
 end
 
 ---------------------------------------------------------------------------

@@ -141,6 +141,8 @@ local UI_STRINGS = {
         CARD_DPS = "%s DPS",
         CARD_SPEED = "Speed %s",
         BADGE_UPGRADE = "Upgrade",
+        CARD_RANDOM_STATS = "Stats on hover",
+        TT_LOADING_STATS = "Loading item stats...",
     },
     deDE = {
         TAB_SHORT = "Gear Scanner",
