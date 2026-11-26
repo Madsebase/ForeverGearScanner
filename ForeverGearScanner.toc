@@ -2,7 +2,7 @@
 ## Title: ForeverGearScanner
 ## Notes: Stat-based Auction House gear browser with card views, slot and stat filters, and optional Pawn upgrade scoring.
 ## Author: Eztatic
-## Version: 1.2.2
+## Version: 1.2.3
 ## Category: Auctions
 ## X-Category: Auction/Economy
 ## X-License: MIT

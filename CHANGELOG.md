@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.3
+
+- **Random-enchant stat resolution on hover & live tooltip/card refresh:** Items whose browse `ItemKey` hides rolled stats behind `<Random enchantment>` (or statless Uncommon+ gear) now display a `Stats on hover` pill instead of blank space, resolve the cheapest listing's concrete `itemLink` via a debounced `SendSearchQuery` on icon hover (and during `Buyout` inspect), and immediately update both the card's stat pills / Pawn upgrade score and the open `GameTooltip`.
+- **Retrieving tooltip deferral & `requiredLevel` forwarding:** Deferred `RETRIEVING_ITEM_INFO` and 0-line tooltips to the async retry queue even when base `IsItemDataCachedByID` is already true, and forwarded `C_AuctionHouse.GetItemKeyRequiredLevel(itemKey)` to both `C_TooltipInfo.GetItemKey` and `GameTooltip:SetItemKey`.
+
 ## v1.2.2
 
 - **Cascading Cat -> Sub -> Slot dropdowns:** Narrowed `Slot` choices dynamically to valid slots for the active `Cat` (`Weapon` / `Armor`) and `Sub` (e.g., `Plate` hides `Back` / `Neck` / `Shields`; `1H` weapons offer `Any` / `Main Hand` / `Off Hand`), auto-selected and locked `Slot` when a subcategory only has one slot (`Two-Handed Axes`, `Bows`, `Shields`, `Relic`), and cleared incompatible selections when changing category or subcategory.
